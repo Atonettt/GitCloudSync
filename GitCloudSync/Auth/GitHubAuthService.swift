@@ -295,14 +295,14 @@ final class GitHubAuthService {
     /// Opens Terminal with `gh auth login` (browser-based). Requires GitHub CLI.
     func openGitHubCLILogin() throws {
         guard let gh = GitEnvironment.findExecutable(named: "gh") else {
-            throw NSError(domain: "GitCloudSync", code: 1, userInfo: [
+            throw NSError(domain: "GitSync", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "未找到 GitHub CLI。请先安装：brew install gh，或访问 https://cli.github.com 下载。",
             ])
         }
         let script = """
         #!/bin/zsh
-        echo "GitCloud Sync — 登录 GitHub CLI"
-        echo "将打开浏览器完成授权，完成后回到 GitCloud Sync 点击「重新检测」。"
+        echo "GitSync — 登录 GitHub CLI"
+        echo "将打开浏览器完成授权，完成后回到 GitSync 点击「重新检测」。"
         echo
         "\(gh.path)" auth login --hostname github.com --git-protocol https --web
         echo

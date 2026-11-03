@@ -10,7 +10,7 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: model.menuBarSymbol).foregroundStyle(.tint)
-                Text("GitCloud Sync").font(.headline)
+                Text("GitSync").font(.headline)
                 Spacer()
                 Text(model.overallStatusText).font(.caption).foregroundStyle(.secondary)
             }

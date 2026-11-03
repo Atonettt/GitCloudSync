@@ -59,7 +59,7 @@ final class LoginItemService {
         case .enabled: "已开启"
         case .notRegistered: "未开启"
         case .requiresApproval: "需要在「系统设置 › 通用 › 登录项」中允许"
-        case .notFound: "未找到应用（请将 GitCloud Sync 放到“应用程序”文件夹后再开启）"
+        case .notFound: "未找到应用（请将 GitSync 放到“应用程序”文件夹后再开启）"
         @unknown default: "未知状态"
         }
     }

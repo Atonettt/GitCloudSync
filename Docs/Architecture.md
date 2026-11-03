@@ -1,4 +1,4 @@
-# GitCloud Sync 架构与同步状态机
+# GitSync 架构与同步状态机
 
 ## 1. 模块划分
 

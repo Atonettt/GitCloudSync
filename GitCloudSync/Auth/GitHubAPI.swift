@@ -66,7 +66,7 @@ enum GitHubAPI {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
-        request.setValue("GitCloudSync", forHTTPHeaderField: "User-Agent")
+        request.setValue("GitSync", forHTTPHeaderField: "User-Agent")
         let (data, response) = try await perform(request)
         switch response.statusCode {
         case 200: return try JSONDecoder().decode(GitHubUser.self, from: data)
@@ -145,7 +145,7 @@ enum GitHubAPI {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.setValue("GitCloudSync", forHTTPHeaderField: "User-Agent")
+        request.setValue("GitSync", forHTTPHeaderField: "User-Agent")
         var components = URLComponents()
         components.queryItems = fields.map { URLQueryItem(name: $0.key, value: $0.value) }
         request.httpBody = components.percentEncodedQuery?.data(using: .utf8)

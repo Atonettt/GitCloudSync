@@ -86,7 +86,7 @@ public enum GitErrorClassifier {
         case .repositoryNotFound:
             "确认远程地址正确，并确认登录的 GitHub 账号对该私有仓库有读写权限；使用令牌时需要 repo 权限（细粒度令牌需对该仓库授予 Contents 读写）。"
         case .network:
-            "请检查网络连接或代理设置。网络恢复后 GitCloud Sync 会自动重试。"
+            "请检查网络连接或代理设置。网络恢复后 GitSync 会自动重试。"
         case .serverUnavailable:
             "GitHub 可能正在维护或网络不稳定，可稍后重试，或访问 githubstatus.com 查看服务状态。"
         case .timeout:
@@ -94,7 +94,7 @@ public enum GitErrorClassifier {
         case .folderMissing:
             "文件夹可能被移动、重命名或所在磁盘未连接。请恢复文件夹位置，或移除该仓库后重新添加。"
         case .permissionDenied:
-            "请在「系统设置 › 隐私与安全性 › 完全磁盘访问权限 / 文件与文件夹」中允许 GitCloud Sync 访问该位置。"
+            "请在「系统设置 › 隐私与安全性 › 完全磁盘访问权限 / 文件与文件夹」中允许 GitSync 访问该位置。"
         case .notARepository:
             "请选择通过 GitHub Desktop 克隆或发布过的仓库文件夹（其中包含 .git 目录）。"
         case .noRemote:
@@ -104,7 +104,7 @@ public enum GitErrorClassifier {
         case .unbornWithRemote:
             "请在 GitHub Desktop 中先拉取（Pull）远程内容，再使用自动同步。"
         case .operationInProgress:
-            "请在 GitHub Desktop 或终端中完成或中止该操作；也可以在「更多」菜单中选择中止（需要确认）。GitCloud Sync 不会自动清理。"
+            "请在 GitHub Desktop 或终端中完成或中止该操作；也可以在「更多」菜单中选择中止（需要确认）。GitSync 不会自动清理。"
         case .indexLocked:
             "可能是 GitHub Desktop 等程序正在执行 Git 操作，稍后会自动重试。若确认没有任何 Git 程序在运行，可删除仓库中的 .git/index.lock。"
         case .largeFile:

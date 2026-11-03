@@ -24,7 +24,7 @@ enum KeychainStore {
             var add = query
             add[kSecValueData as String] = data
             add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            add[kSecAttrLabel as String] = "GitCloud Sync GitHub Token"
+            add[kSecAttrLabel as String] = "GitSync GitHub Token"
             let addStatus = SecItemAdd(add as CFDictionary, nil)
             guard addStatus == errSecSuccess else { throw KeychainError(status: addStatus) }
         } else if status != errSecSuccess {

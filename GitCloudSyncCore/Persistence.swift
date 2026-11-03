@@ -193,6 +193,7 @@ public struct JSONFileStore<Value: Codable>: Sendable {
     public static func applicationSupportURL(fileName: String) -> URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
+        // Folder keeps the app's original name so existing settings and logs carry over.
         return base.appendingPathComponent("GitCloudSync", isDirectory: true).appendingPathComponent(fileName)
     }
 

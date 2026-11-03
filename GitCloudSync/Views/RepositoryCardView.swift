@@ -159,7 +159,7 @@ struct RepositoryCardView: View {
         .confirmationDialog("从列表移除「\(repo.displayName)」？", isPresented: $confirmRemove) {
             Button("移除", role: .destructive) { model.removeRepository(repo.id) }
         } message: {
-            Text("只会从 GitCloud Sync 中移除，不会删除本地文件，也不会影响 GitHub 上的仓库。")
+            Text("只会从 GitSync 中移除，不会删除本地文件，也不会影响 GitHub 上的仓库。")
         }
         .confirmationDialog("中止未完成的 \(info?.inProgressOperation?.displayName ?? "Git") 操作？", isPresented: $confirmAbort) {
             Button("中止操作", role: .destructive) { Task { await model.abortInProgressOperation(repo.id) } }

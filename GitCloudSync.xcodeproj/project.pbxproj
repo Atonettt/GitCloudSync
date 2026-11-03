@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		A10000000000000000000001 /* GitCloudSync.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GitCloudSync.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000001 /* GitSync.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GitSync.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000002 /* GitCloudSyncTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GitCloudSyncTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -36,7 +36,7 @@
 		A40000000000000000000002 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A10000000000000000000001 /* GitCloudSync.app */,
+				A10000000000000000000001 /* GitSync.app */,
 				A10000000000000000000002 /* GitCloudSyncTests.xctest */,
 			);
 			name = Products;
@@ -63,7 +63,7 @@
 			);
 			name = GitCloudSync;
 			productName = GitCloudSync;
-			productReference = A10000000000000000000001 /* GitCloudSync.app */;
+			productReference = A10000000000000000000001 /* GitSync.app */;
 			productType = "com.apple.product-type.application";
 		};
 		A50000000000000000000002 /* GitCloudSyncTests */ = {
@@ -197,7 +197,7 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "GitCloud Sync";
+				INFOPLIST_KEY_CFBundleDisplayName = GitSync;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -206,7 +206,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.gitcloudsync.app;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = GitSync;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
@@ -226,7 +226,7 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "GitCloud Sync";
+				INFOPLIST_KEY_CFBundleDisplayName = GitSync;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -235,7 +235,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.gitcloudsync.app;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = GitSync;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;

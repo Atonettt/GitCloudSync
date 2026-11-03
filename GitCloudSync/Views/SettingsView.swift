@@ -48,7 +48,7 @@ struct GeneralSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(loginError == nil ? Color.secondary : Color.red)
                 Toggle("在 Dock 中显示图标", isOn: $model.settings.showDockIcon)
-                Text("关闭主窗口后，GitCloud Sync 会继续在菜单栏中运行并同步。选择菜单栏中的「退出」才会停止。")
+                Text("关闭主窗口后，GitSync 会继续在菜单栏中运行并同步。选择菜单栏中的「退出」才会停止。")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("通知") {
@@ -103,7 +103,7 @@ struct AccountSettingsView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if auth.hasAppToken {
-                    Button("退出登录（删除 GitCloud Sync 保存的令牌）", role: .destructive) { auth.signOut() }
+                    Button("退出登录（删除 GitSync 保存的令牌）", role: .destructive) { auth.signOut() }
                 }
             }
 
@@ -154,7 +154,7 @@ struct AccountSettingsView: View {
             }
 
             Section("其他") {
-                Text("如果以上都未配置，GitCloud Sync 会使用系统 Git 已保存的凭据（osxkeychain / Git Credential Manager）或 SSH 密钥。所有 Git 操作都禁止交互式提示，凭据缺失时会明确报错而不是卡住。")
+                Text("如果以上都未配置，GitSync 会使用系统 Git 已保存的凭据（osxkeychain / Git Credential Manager）或 SSH 密钥。所有 Git 操作都禁止交互式提示，凭据缺失时会明确报错而不是卡住。")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

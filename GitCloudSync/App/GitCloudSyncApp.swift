@@ -7,7 +7,7 @@ struct GitCloudSyncApp: App {
     @State private var model = AppModel.shared
 
     var body: some Scene {
-        Window("GitCloud Sync", id: WindowID.main) {
+        Window("GitSync", id: WindowID.main) {
             MainView()
                 .environment(model)
         }

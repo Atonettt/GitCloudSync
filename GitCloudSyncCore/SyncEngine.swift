@@ -16,7 +16,7 @@ public struct SyncOptions: Sendable {
     public var ignorePatterns: [String] = IgnoreRules.defaultPatterns
     public var machineName: String = ProcessInfo.processInfo.hostName
     /// Used only when the repository has no user.name / user.email configured.
-    public var fallbackIdentity = GitIdentity(name: "GitCloud Sync", email: "gitcloud-sync@users.noreply.github.com")
+    public var fallbackIdentity = GitIdentity(name: "GitSync", email: "gitsync@users.noreply.github.com")
     public var networkTimeout: TimeInterval = 300
     public var localTimeout: TimeInterval = 120
     public var maxPushRetries = 2
@@ -96,7 +96,7 @@ public struct SyncEngine: Sendable {
             throw SyncFailure.from(result, stage: .conflictResolution, command: "git show \(upstream):\(path)")
         }
         let folder = FileManager.default.temporaryDirectory
-            .appendingPathComponent("GitCloudSync-Compare", isDirectory: true)
+            .appendingPathComponent("GitSync-Compare", isDirectory: true)
             .appendingPathComponent(Self.timestamp(), isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let target = folder.appendingPathComponent(Self.copyName(for: (path as NSString).lastPathComponent, label: "远程版本"))
@@ -397,7 +397,7 @@ public struct SyncEngine: Sendable {
                                      timeout: options.localTimeout)
             return
         }
-        let args = ["merge", "--no-edit", "-m", "GitCloud Sync：合并来自 GitHub 的更新（\(options.machineName)）", upstream]
+        let args = ["merge", "--no-edit", "-m", "GitSync：合并来自 GitHub 的更新（\(options.machineName)）", upstream]
         let result = try await git(args, stage: .merge, session: session, timeout: options.localTimeout,
                                    extraConfig: try await identityConfig())
         guard !result.succeeded else { return }
@@ -479,7 +479,7 @@ public struct SyncEngine: Sendable {
                 kind: .operationInProgress, stage: .merge, command: "git merge --abort",
                 exitCode: result.exitCode, stderr: result.stderr,
                 message: "检测到冲突后自动中止合并失败，仓库仍处于合并状态",
-                suggestion: "为避免数据丢失，GitCloud Sync 没有执行任何其他清理。请在 GitHub Desktop 中查看并处理该仓库。"
+                suggestion: "为避免数据丢失，GitSync 没有执行任何其他清理。请在 GitHub Desktop 中查看并处理该仓库。"
             )
         }
     }
@@ -527,7 +527,7 @@ public struct SyncEngine: Sendable {
 
     private func commitMessage(files: [(status: String, path: String)]) -> String {
         let date = Date().formatted(.dateTime.year().month(.twoDigits).day(.twoDigits).hour().minute())
-        var lines = ["GitCloud Sync：\(options.machineName) 自动同步 \(date)", ""]
+        var lines = ["GitSync：\(options.machineName) 自动同步 \(date)", ""]
         lines.append("共 \(files.count) 个文件变更：")
         for file in files.prefix(30) {
             lines.append("\(file.status)\t\(file.path)")

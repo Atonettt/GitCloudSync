@@ -45,7 +45,7 @@ struct HeaderView: View {
                 .font(.system(size: 26))
                 .foregroundStyle(.tint)
             VStack(alignment: .leading, spacing: 2) {
-                Text("GitCloud Sync").font(.title2.bold())
+                Text("GitSync").font(.title2.bold())
                 AuthStatusLabel()
             }
             Spacer()

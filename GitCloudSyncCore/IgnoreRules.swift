@@ -21,6 +21,7 @@ public enum IgnoreRules {
         "desktop.ini",
     ]
 
+    // Markers keep the app's original name so blocks already written to repositories are still found.
     static let beginMarker = "# >>> GitCloud Sync managed rules (edit in the app) >>>"
     static let endMarker = "# <<< GitCloud Sync managed rules <<<"
 

@@ -109,7 +109,7 @@ final class AppModel {
         started = true
         applyDockPolicy()
         notifications.requestAuthorization()
-        log(nil, "启动", .info, "GitCloud Sync 已启动，管理 \(repositories.count) 个仓库")
+        log(nil, "启动", .info, "GitSync 已启动，管理 \(repositories.count) 个仓库")
 
         networkMonitor.start { online in
             Task { @MainActor in AppModel.shared.networkChanged(online: online) }
@@ -622,7 +622,7 @@ final class AppModel {
         do {
             try store.save(PersistedState(settings: settings, repositories: repositories))
         } catch {
-            logStore.add(SyncLogEntry(repositoryName: "GitCloud Sync", stage: "配置", level: .error,
+            logStore.add(SyncLogEntry(repositoryName: "GitSync", stage: "配置", level: .error,
                                       result: "保存配置失败", detail: error.localizedDescription))
         }
     }
@@ -633,7 +633,7 @@ final class AppModel {
         _ repoID: UUID?, _ stage: String, _ level: LogLevel, _ result: String,
         exitCode: Int32? = nil, detail: String? = nil, duration: TimeInterval? = nil
     ) {
-        let name = repoID.flatMap { repository($0)?.displayName } ?? "GitCloud Sync"
+        let name = repoID.flatMap { repository($0)?.displayName } ?? "GitSync"
         logStore.add(SyncLogEntry(repositoryID: repoID, repositoryName: name, stage: stage, level: level,
                                   result: result, exitCode: exitCode, detail: detail, duration: duration))
     }

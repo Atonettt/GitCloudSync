@@ -1,4 +1,4 @@
-# GitCloud Sync
+# GitSync
 
 把 GitHub 私有仓库当作个人云盘：在 Mac 上管理多个本地 Git 仓库，自动提交、上传、下载，冲突时绝不覆盖任何一方文件。
 
@@ -32,11 +32,11 @@ xcodebuild -project GitCloudSync.xcodeproj -scheme GitCloudSync -configuration R
 ```
 
 ```bash
-ditto ~/Library/Developer/Xcode/DerivedData/GitCloudSync/Build/Products/Release/GitCloudSync.app /Applications/GitCloudSync.app
+ditto ~/Library/Developer/Xcode/DerivedData/GitCloudSync/Build/Products/Release/GitSync.app /Applications/GitSync.app
 ```
 
 ```bash
-open /Applications/GitCloudSync.app
+open /Applications/GitSync.app
 ```
 
 **运行测试：**
@@ -81,9 +81,11 @@ xcodebuild -project GitCloudSync.xcodeproj -scheme GitCloudSyncTests -derivedDat
 
 **同时在两台 Mac 上修改了同一个 Word 文件**：仓库进入「存在冲突」并暂停自动同步，磁盘上仍是本机版本，GitHub 上仍是另一台的版本。点「解决冲突…」，推荐选「保留两者」：本机版本保持原名，远程版本另存为 `合同 (远程版本 2026-11-03 1530).docx`，然后上传。
 
-**仓库处于 merge/rebase 未完成状态**（比如在 GitHub Desktop 中处理了一半）：GitCloud Sync 只提示，不会自动清理。可以回到 GitHub Desktop 完成，或在「更多 › 中止未完成的 Git 操作…」中确认后中止。
+**仓库处于 merge/rebase 未完成状态**（比如在 GitHub Desktop 中处理了一半）：GitSync 只提示，不会自动清理。可以回到 GitHub Desktop 完成，或在「更多 › 中止未完成的 Git 操作…」中确认后中止。
 
 ## 数据位置
+
+应用原名 GitCloud Sync。改名为 GitSync 后，Bundle ID、配置文件夹和下列内部名称保持不变，旧版的设置、日志和钥匙串登录可以直接沿用。
 
 * 配置：`~/Library/Application Support/GitCloudSync/state.json`
 * 日志：`~/Library/Application Support/GitCloudSync/logs.json`（最多保留 3000 条）
@@ -99,7 +101,7 @@ GitCloudSyncCore/      与 UI 无关的核心：ProcessRunner、GitEnvironment�
                        RepositoryInspector、SyncEngine、SyncCoordinator、错误分类、持久化
 GitCloudSyncTests/     单元测试（编译 Core 源码，用临时本地仓库和裸仓库）
 Docs/Architecture.md   架构与状态机
-tools/make_icon.swift  生成应用图标
+tools/                 应用图标源图 icon-source.png 与生成脚本 make_icon.swift
 ```
 
 ## 测试与验证情况
@@ -139,4 +141,4 @@ tools/make_icon.swift  生成应用图标
 * 已经被 Git 跟踪的文件不受忽略规则影响（Git 本身的规则），需要先在 GitHub Desktop 中从仓库移除。
 * 完全退出应用后不会继续同步；需要持续同步请保持菜单栏运行或开启「登录时自动启动」。没有另外做独立的后台辅助进程。
 * 不检测「文件正在被 Word 写入」；Word 通常原子保存，若担心可适当增大同步间隔。
-* 合并方式为 merge（不是 rebase），历史中会出现「GitCloud Sync：合并来自 GitHub 的更新」提交，这是为了在任何失败点都能安全中止。
+* 合并方式为 merge（不是 rebase），历史中会出现「GitSync：合并来自 GitHub 的更新」提交，这是为了在任何失败点都能安全中止。
