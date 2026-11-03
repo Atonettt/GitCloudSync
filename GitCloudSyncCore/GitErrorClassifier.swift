@@ -57,7 +57,7 @@ public enum GitErrorClassifier {
     public static func message(for kind: FailureKind, stage: SyncStage) -> String {
         switch kind {
         case .authentication: "GitHub 认证失败（\(stage.displayName)）"
-        case .repositoryNotFound: "找不到 GitHub 仓库，或当前账号无权访问该私有仓库"
+        case .repositoryNotFound: "找不到 GitHub 仓库：可能已被删除或改名，或当前账号无权访问"
         case .network: "无法连接 GitHub，网络不可用"
         case .serverUnavailable: "GitHub 服务器暂时不可用"
         case .timeout: "Git 操作超时（\(stage.displayName)）"
@@ -84,7 +84,7 @@ public enum GitErrorClassifier {
         case .authentication:
             "请在「设置 › GitHub 账户」中重新登录（OAuth、GitHub CLI 或个人访问令牌）。如果使用 SSH 地址，请确认 ssh-agent 中已加载密钥。"
         case .repositoryNotFound:
-            "确认远程地址正确，并确认登录的 GitHub 账号对该私有仓库有读写权限；使用令牌时需要 repo 权限（细粒度令牌需对该仓库授予 Contents 读写）。"
+            "如果仓库已在 GitHub 上删除，可在「更多」中把这个文件夹重新发布到新仓库，或从列表移除。否则请确认远程地址正确，并确认登录的 GitHub 账号对该私有仓库有读写权限；使用令牌时需要 repo 权限（细粒度令牌需对该仓库授予 Contents 读写）。"
         case .network:
             "请检查网络连接或代理设置。网络恢复后 GitSync 会自动重试。"
         case .serverUnavailable:

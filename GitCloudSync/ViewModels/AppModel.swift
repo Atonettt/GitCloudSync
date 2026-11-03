@@ -12,9 +12,9 @@ struct RepoRuntime {
 }
 
 enum SyncTrigger: String {
-    case manualSingle, manualAll, scheduled, startup, wake, networkRestored, conflictResolution
+    case manualSingle, manualAll, scheduled, startup, wake, networkRestored, conflictResolution, restore
 
-    var isManual: Bool { self == .manualSingle || self == .manualAll || self == .conflictResolution }
+    var isManual: Bool { self == .manualSingle || self == .manualAll || self == .conflictResolution || self == .restore }
 
     var displayName: String {
         switch self {
@@ -24,6 +24,7 @@ enum SyncTrigger: String {
         case .wake: "唤醒后同步"
         case .networkRestored: "网络恢复后同步"
         case .conflictResolution: "解决冲突"
+        case .restore: "恢复历史版本"
         }
     }
 }
@@ -31,15 +32,35 @@ enum SyncTrigger: String {
 enum AppSheet: Identifiable {
     case errorDetail(UUID)
     case conflicts(UUID)
+    case history(UUID)
+    case createRepository(URL)
+    case deleteRepository(UUID, github: Bool, local: Bool)
     case deviceFlow
 
     var id: String {
         switch self {
         case .errorDetail(let id): "error-\(id)"
         case .conflicts(let id): "conflict-\(id)"
+        case .history(let id): "history-\(id)"
+        case .createRepository(let url): "create-\(url.path)"
+        case .deleteRepository(let id, _, _): "delete-\(id)"
         case .deviceFlow: "device-flow"
         }
     }
+}
+
+enum CreationOutcome {
+    case created
+    case failed(String)
+    /// The name is taken by an empty repository of the same account, which can be linked instead.
+    case nameTakenButEmpty(String)
+}
+
+enum DeletionOutcome {
+    case done
+    case failed(String)
+    /// GitHub refused: the token lacks the delete_repo permission.
+    case needsDeleteScope
 }
 
 struct AppAlert: Identifiable {
@@ -65,7 +86,11 @@ final class AppModel {
     private(set) var nextSyncDate: Date?
     private(set) var isShuttingDown = false
     var activeSheet: AppSheet?
-    var alert: AppAlert?
+    var alert: AppAlert? {
+        didSet { if alert == nil { showNextCreation() } }
+    }
+    /// Plain folders waiting for the "create on GitHub" sheet, one at a time.
+    @ObservationIgnored private var pendingCreations: [URL] = []
 
     let logStore = LogStore()
     let auth = GitHubAuthService()
@@ -178,9 +203,19 @@ final class AppModel {
         }
         var problems: [String] = []
         for url in urls {
+            if let reason = RepositoryCreator.refusalReason(for: url) {
+                problems.append(reason)
+                continue
+            }
             let client = GitClient(repositoryURL: url, git: git)
             do {
                 let info = try await RepositoryInspector(client: client).inspect()
+                if info.remoteURL == nil,
+                   RepositoryCreator.canonicalPath(info.topLevelPath) == RepositoryCreator.canonicalPath(url.path) {
+                    // A local-only repository: offer to create its GitHub repository.
+                    pendingCreations.append(url)
+                    continue
+                }
                 if repositories.contains(where: { $0.path == info.topLevelPath }) {
                     problems.append("「\(url.lastPathComponent)」已经在列表中。")
                     continue
@@ -205,6 +240,8 @@ final class AppModel {
                 if let op = info.inProgressOperation {
                     problems.append("「\(config.displayName)」有未完成的\(op.displayName)，需要先处理才能同步。")
                 }
+            } catch let failure as SyncFailure where failure.kind == .notARepository {
+                pendingCreations.append(url)
             } catch let failure as SyncFailure {
                 problems.append("「\(url.lastPathComponent)」：\(failure.message)\n\(failure.suggestion)")
             } catch {
@@ -215,6 +252,165 @@ final class AppModel {
         if !problems.isEmpty {
             alert = AppAlert(title: "添加仓库", message: problems.joined(separator: "\n\n"))
         }
+        showNextCreation()
+    }
+
+    // MARK: - New GitHub repositories
+
+    /// Presents the next queued "create on GitHub" sheet once nothing else is on screen.
+    func showNextCreation() {
+        guard activeSheet == nil, alert == nil, !pendingCreations.isEmpty else { return }
+        activeSheet = .createRepository(pendingCreations.removeFirst())
+    }
+
+    func previewFolder(_ url: URL) async throws -> FolderPreview {
+        guard let git = gitEnvironment else {
+            throw SyncFailure(kind: .gitUnavailable, stage: .inspect, stderr: gitProblem ?? "")
+        }
+        let limit = Int64(max(1, settings.largeFileLimitMB)) * 1024 * 1024
+        return try await RepositoryCreator(git: git).preview(folder: url, largeFileLimit: limit, ignorePatterns: settings.ignorePatterns)
+    }
+
+    /// Creates `name` on GitHub (or links an empty repository of that name), prepares the folder,
+    /// adds it to the list and starts the first sync, which uploads every file.
+    func createGitHubRepository(folder: URL, name: String, isPrivate: Bool, description: String, linkExisting: Bool) async -> CreationOutcome {
+        guard let git = gitEnvironment else { return .failed(gitProblem ?? "未找到 Git") }
+        guard let credential = await auth.credentialForGit() else {
+            return .failed("需要先在「设置 › GitHub 账户」中登录 GitHub。仅使用系统凭据助手或 SSH 时，无法自动创建仓库。")
+        }
+        let creator = RepositoryCreator(git: git)
+        let login = auth.user?.login
+        let remoteURL: String
+        do {
+            if linkExisting {
+                guard let login else { return .failed("无法确定当前 GitHub 账号，请在设置中重新检测登录状态。") }
+                remoteURL = "https://github.com/\(login)/\(name).git"
+                guard try await creator.remoteIsEmpty(remoteURL, credential: credential, in: folder) else {
+                    return .failed("GitHub 上的「\(login)/\(name)」已有内容，不能直接关联。请换一个仓库名。")
+                }
+                log(nil, "创建仓库", .info, "关联已有的空仓库 \(login)/\(name)")
+            } else {
+                do {
+                    let repo = try await GitHubAPI.createRepository(token: credential.token, name: name,
+                                                                    isPrivate: isPrivate, description: description)
+                    remoteURL = repo.cloneURL
+                    log(nil, "创建仓库", .success, "已在 GitHub 创建\(isPrivate ? "私有" : "公开")仓库 \(repo.fullName)",
+                        detail: "本地文件夹：\(folder.path)\n\(repo.htmlURL.absoluteString)")
+                } catch GitHubAPIError.nameTaken {
+                    if let login, (try? await creator.remoteIsEmpty("https://github.com/\(login)/\(name).git",
+                                                                     credential: credential, in: folder)) == true {
+                        return .nameTakenButEmpty("\(login)/\(name)")
+                    }
+                    return .failed("你的 GitHub 账号下已经有名为「\(name)」的仓库，请换一个名字。")
+                }
+            }
+            try await creator.prepare(folder: folder, remoteURL: remoteURL, identity: auth.identity,
+                                      ignorePatterns: settings.ignorePatterns)
+        } catch let error as GitHubAPIError {
+            return .failed(error.localizedDescription)
+        } catch let failure as SyncFailure {
+            return .failed(failure.message + (failure.stderr.isEmpty ? "" : "\n\n" + failure.stderr))
+        } catch {
+            return .failed(error.localizedDescription)
+        }
+
+        let path = RepositoryCreator.canonicalPath(folder.path)
+        if let existing = repositories.first(where: { RepositoryCreator.canonicalPath($0.path) == path }) {
+            // A local-only folder already in the list (for example after its GitHub repository was deleted).
+            update(existing.id) {
+                $0.autoSyncEnabled = true
+                $0.lastMessage = nil
+            }
+            await refreshInfo(existing.id)
+        } else {
+            await addRepositories(urls: [folder])
+        }
+        if let repo = repositories.first(where: { RepositoryCreator.canonicalPath($0.path) == path }) {
+            sync(repo.id, trigger: .manualSingle)
+        }
+        return .created
+    }
+
+    // MARK: - Deleting the GitHub repository or the local folder
+
+    /// Counts what exists on only one side. `includeRemote` fetches from GitHub first.
+    func deletionCheck(_ id: UUID, includeRemote: Bool) async throws -> DeletionCheck {
+        guard let repo = repository(id), let git = gitEnvironment else {
+            throw SyncFailure(kind: .gitUnavailable, stage: .inspect, stderr: gitProblem ?? "")
+        }
+        let credential = includeRemote ? await auth.credentialForGit() : nil
+        let client = GitClient(repositoryURL: URL(fileURLWithPath: repo.path), git: git, credential: credential)
+        return try await RepositoryRemoval(client: client).check(fetch: includeRemote)
+    }
+
+    /// Deletes the repository on GitHub and/or moves the local folder to the Trash. Each side is
+    /// independent: deleting on GitHub leaves the folder (with its full history) as a local-only
+    /// folder, and trashing the folder leaves GitHub untouched.
+    func deleteRepository(_ id: UUID, onGitHub: Bool, local: Bool) async -> DeletionOutcome {
+        guard let repo = repository(id), let git = gitEnvironment else { return .failed(gitProblem ?? "未找到 Git") }
+        guard runtime[id]?.isSyncing != true, !(await coordinator.isRunning(id)) else {
+            return .failed("\(repo.displayName) 正在同步，请等同步结束后再删除。")
+        }
+        // Holding the syncing flag keeps the scheduler away while files are being removed.
+        runtime[id, default: RepoRuntime()].isSyncing = true
+        defer { runtime[id]?.isSyncing = false }
+        let folder = URL(fileURLWithPath: repo.path)
+
+        if onGitHub {
+            await refreshInfo(id)
+            guard let remote = runtime[id]?.info?.remoteURL,
+                  let target = RepositoryRemoval.gitHubFullName(fromRemote: remote) else {
+                return .failed("这个仓库的远程地址不是 GitHub，无法从这里删除。")
+            }
+            guard let credential = await auth.credentialForGit() else {
+                return .failed("需要先在「设置 › GitHub 账户」中登录 GitHub。")
+            }
+            do {
+                try await GitHubAPI.deleteRepository(token: credential.token, owner: target.owner, name: target.name)
+                log(id, "删除 GitHub 仓库", .warning, "已删除 GitHub 上的仓库 \(target.owner)/\(target.name)（本地文件夹保留）")
+            } catch GitHubAPIError.missingDeleteScope {
+                auth.handleGitAuthFailure()   // drops the cached CLI token so a refreshed one is picked up
+                return .needsDeleteScope
+            } catch GitHubAPIError.notFound {
+                log(id, "删除 GitHub 仓库", .warning, "GitHub 上已经找不到 \(target.owner)/\(target.name)，按已删除处理")
+            } catch {
+                return .failed(error.localizedDescription)
+            }
+
+            if !local {
+                do {
+                    let client = GitClient(repositoryURL: folder, git: git)
+                    let renamed = try await RepositoryRemoval(client: client).detachDeletedRemote()
+                    update(id) {
+                        $0.autoSyncEnabled = false
+                        $0.pausedForConflict = false
+                        $0.conflictFiles = []
+                        $0.lastStatus = .notSynced
+                        $0.lastFailure = nil
+                        $0.lastMessage = "GitHub 上的仓库已删除，现在是仅本地的文件夹"
+                    }
+                    log(id, "删除 GitHub 仓库", .info, "\(repo.displayName) 已改为仅本地，原远程改名为 \(renamed) 以保留已下载的提交")
+                } catch {
+                    let message = (error as? SyncFailure)?.fullReport ?? error.localizedDescription
+                    log(id, "删除 GitHub 仓库", .error, "GitHub 仓库已删除，但更新本地远程设置失败", detail: message)
+                    return .failed("GitHub 上的仓库已删除，但更新本地设置失败：\n\(message)")
+                }
+                await refreshInfo(id)
+            }
+        }
+
+        if local {
+            do {
+                var trashed: NSURL?
+                try FileManager.default.trashItem(at: folder, resultingItemURL: &trashed)
+                log(id, "删除本地文件夹", .warning, "已将 \(repo.path) 移到废纸篓\(onGitHub ? "" : "（GitHub 上的仓库保留）")",
+                    detail: trashed?.path)
+            } catch {
+                return .failed((onGitHub ? "GitHub 上的仓库已删除，但" : "") + "无法把文件夹移到废纸篓：\(error.localizedDescription)")
+            }
+            removeRepository(id)
+        }
+        return .done
     }
 
     /// Removes the repository from the list only. Files and the GitHub repository are untouched.
@@ -433,6 +629,58 @@ final class AppModel {
         }
     }
 
+    // MARK: - History
+
+    /// Read-only access to a repository's history; nil when Git is unavailable.
+    func historyBrowser(_ id: UUID) -> HistoryBrowser? {
+        guard let repo = repository(id), let git = gitEnvironment else { return nil }
+        return HistoryBrowser(client: GitClient(repositoryURL: URL(fileURLWithPath: repo.path), git: git))
+    }
+
+    /// Brings a file or the whole folder back to a committed version, then syncs the result.
+    func restore(_ id: UUID, target: RestoreTarget, description: String) {
+        guard !isShuttingDown, let repo = repository(id), let git = gitEnvironment else { return }
+        guard runtime[id]?.isSyncing != true else {
+            alert = AppAlert(title: "请稍候", message: "\(repo.displayName) 正在同步，完成后再恢复。")
+            return
+        }
+        runtime[id, default: RepoRuntime()].isSyncing = true
+        runtime[id]?.phase = nil
+        let options = makeSyncOptions()
+        log(id, "恢复历史版本", .info, "开始恢复 \(repo.displayName)：\(description)")
+
+        syncTasks[id] = Task {
+            let credential = await auth.credentialForGit()
+            let engine = SyncEngine(client: GitClient(repositoryURL: URL(fileURLWithPath: repo.path), git: git, credential: credential), options: options)
+            let report = await coordinator.run(id: id) {
+                await engine.restore(target, description: description) { phase in
+                    Task { @MainActor in AppModel.shared.updatePhase(id, phase) }
+                }
+            }
+            if let report {
+                finish(id: id, report: report, failure: nil, trigger: .restore)
+            } else {
+                runtime[id]?.isSyncing = false
+            }
+            syncTasks[id] = nil
+        }
+    }
+
+    /// Saves an old version next to the current file and shows it in Finder. Returns false on failure.
+    @discardableResult
+    func saveVersionCopy(_ id: UUID, path: String, commit: String, date: Date, besides currentPath: String? = nil) async -> Bool {
+        guard let browser = historyBrowser(id) else { return false }
+        do {
+            let copy = try await browser.saveCopy(path: path, commit: commit, date: date, besides: currentPath)
+            log(id, "历史版本", .success, "已将「\(path)」的历史版本另存为「\(copy)」，下次同步时上传")
+            revealInFinder(id, relativePath: copy)
+            return true
+        } catch {
+            alert = AppAlert(title: "无法另存副本", message: (error as? SyncFailure)?.fullReport ?? error.localizedDescription)
+            return false
+        }
+    }
+
     func abortInProgressOperation(_ id: UUID) async {
         guard let repo = repository(id), let git = gitEnvironment, runtime[id]?.isSyncing != true else { return }
         let engine = SyncEngine(client: GitClient(repositoryURL: URL(fileURLWithPath: repo.path), git: git), options: makeSyncOptions())
@@ -488,7 +736,7 @@ final class AppModel {
                 $0.conflictFiles = []
                 $0.pausedForConflict = false
             }
-            log(id, trigger.displayName, .success, "\(repo.displayName)：同步成功，\(summary.text)",
+            log(id, trigger.displayName, .success, "\(repo.displayName)：\(trigger == .restore ? "恢复完成" : "同步成功")，\(summary.text)",
                 detail: join(warningsText, stepsText), duration: duration)
             if settings.notifyOnChanges, summary.downloadedCommits > 0 || summary.uploadedCommits > 0 {
                 notifications.post(title: "\(repo.displayName) 已同步", body: summary.text, identifier: "sync-\(id)")

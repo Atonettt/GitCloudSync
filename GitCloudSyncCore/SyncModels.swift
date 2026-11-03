@@ -47,11 +47,11 @@ public enum SyncStatus: String, Codable, Sendable, CaseIterable {
 
 /// Fine-grained progress reported by the engine while it runs.
 public enum SyncPhase: String, Sendable {
-    case checking, downloading, committing, merging, uploading
+    case checking, downloading, committing, merging, restoring, uploading
 
     public var status: SyncStatus {
         switch self {
-        case .checking: .checking
+        case .checking, .restoring: .checking
         case .downloading, .merging: .downloading
         case .committing, .uploading: .uploading
         }
@@ -63,13 +63,14 @@ public enum SyncPhase: String, Sendable {
         case .downloading: "正在获取远程更新"
         case .committing: "正在提交本地修改"
         case .merging: "正在整合远程更新"
+        case .restoring: "正在恢复历史版本"
         case .uploading: "正在上传"
         }
     }
 }
 
 public enum SyncStage: String, Codable, Sendable {
-    case preflight, ignoreRules, fetch, stage, commit, merge, push, conflictResolution, inspect, auth
+    case preflight, ignoreRules, fetch, stage, commit, merge, push, conflictResolution, restore, history, inspect, auth
 
     public var displayName: String {
         switch self {
@@ -81,6 +82,8 @@ public enum SyncStage: String, Codable, Sendable {
         case .merge: "整合远程更新"
         case .push: "上传到 GitHub"
         case .conflictResolution: "解决冲突"
+        case .restore: "恢复历史版本"
+        case .history: "读取历史版本"
         case .inspect: "读取仓库信息"
         case .auth: "GitHub 认证"
         }
@@ -156,9 +159,16 @@ public struct SyncFailure: Error, Codable, Sendable, Hashable {
         )
     }
 
+    /// GitHub could not be reached; local work is unaffected and a later sync can finish the job.
+    public var isConnectivity: Bool {
+        kind == .network || kind == .timeout || kind == .serverUnavailable
+    }
+
     public var mappedStatus: SyncStatus {
         switch kind {
-        case .authentication, .repositoryNotFound: .needsAuth
+        case .authentication: .needsAuth
+        // GitHub answers "not found" both for deleted repositories and for missing access, so
+        // this is shown as a failure with an explanation rather than as a sign-in problem.
         case .network: .networkUnavailable
         case .operationInProgress: .conflict
         default: .failed
@@ -234,9 +244,12 @@ public struct SyncSummary: Codable, Sendable, Hashable {
     public var committedFiles: Int
     public var downloadedCommits: Int
     public var uploadedCommits: Int
+    /// Files brought back from history by a restore.
+    public var restoredFiles: Int = 0
 
     public var text: String {
         var parts: [String] = []
+        if restoredFiles > 0 { parts.append("恢复 \(restoredFiles) 个文件") }
         if committedFiles > 0 { parts.append("提交 \(committedFiles) 个文件") }
         if downloadedCommits > 0 { parts.append("下载 \(downloadedCommits) 个提交") }
         if uploadedCommits > 0 { parts.append("上传 \(uploadedCommits) 个提交") }

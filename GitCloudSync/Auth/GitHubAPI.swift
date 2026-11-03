@@ -8,8 +8,24 @@ struct GitHubUser: Decodable, Sendable {
     var noreplyEmail: String { "\(id)+\(login)@users.noreply.github.com" }
 }
 
+struct CreatedRepository: Decodable, Sendable {
+    let fullName: String
+    let cloneURL: String
+    let htmlURL: URL
+
+    enum CodingKeys: String, CodingKey {
+        case fullName = "full_name"
+        case cloneURL = "clone_url"
+        case htmlURL = "html_url"
+    }
+}
+
 enum GitHubAPIError: Error, LocalizedError {
     case unauthorized
+    case nameTaken
+    case missingDeleteScope
+    case notFound
+    case cannotCreate(String)
     case http(Int, String)
     case network(String)
     case oauth(String, String?)
@@ -17,6 +33,10 @@ enum GitHubAPIError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unauthorized: "令牌无效或已过期（HTTP 401）"
+        case .nameTaken: "你的 GitHub 账号下已经有同名仓库"
+        case .missingDeleteScope: "当前登录的令牌没有删除仓库的权限（delete_repo）"
+        case .notFound: "GitHub 上找不到这个仓库"
+        case .cannotCreate(let detail): "当前登录的令牌没有创建仓库的权限（\(detail)）。请用 GitHub CLI 登录，或使用带 repo 权限的经典令牌。"
         case .http(let code, let body): "GitHub 返回 HTTP \(code)：\(body.prefix(300))"
         case .network(let message): "无法连接 GitHub：\(message)"
         case .oauth(let code, let description): "授权失败：\(description ?? code)（\(code)）"
@@ -71,6 +91,50 @@ enum GitHubAPI {
         switch response.statusCode {
         case 200: return try JSONDecoder().decode(GitHubUser.self, from: data)
         case 401: throw GitHubAPIError.unauthorized
+        default: throw GitHubAPIError.http(response.statusCode, String(decoding: data, as: UTF8.self))
+        }
+    }
+
+    /// Creates a repository under the signed-in account. https://docs.github.com/rest/repos/repos#create-a-repository-for-the-authenticated-user
+    static func createRepository(token: String, name: String, isPrivate: Bool, description: String) async throws -> CreatedRepository {
+        var request = URLRequest(url: URL(string: "https://api.github.com/user/repos")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        request.setValue("GitSync", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        var body: [String: Any] = ["name": name, "private": isPrivate, "auto_init": false]
+        if !description.isEmpty { body["description"] = description }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await perform(request)
+        let text = String(decoding: data, as: UTF8.self)
+        switch response.statusCode {
+        case 201: return try JSONDecoder().decode(CreatedRepository.self, from: data)
+        case 401: throw GitHubAPIError.unauthorized
+        case 422 where text.contains("already exists"): throw GitHubAPIError.nameTaken
+        case 403, 404: throw GitHubAPIError.cannotCreate("HTTP \(response.statusCode)")
+        default: throw GitHubAPIError.http(response.statusCode, text)
+        }
+    }
+
+    /// Permanently deletes a repository. Needs the `delete_repo` scope (classic tokens, GitHub CLI)
+    /// or Administration write access (fine-grained tokens).
+    static func deleteRepository(token: String, owner: String, name: String) async throws {
+        var components = URLComponents(string: "https://api.github.com")!
+        components.path = "/repos/\(owner)/\(name)"
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        request.setValue("GitSync", forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await perform(request)
+        switch response.statusCode {
+        case 204: return
+        case 401: throw GitHubAPIError.unauthorized
+        case 403: throw GitHubAPIError.missingDeleteScope
+        case 404: throw GitHubAPIError.notFound
         default: throw GitHubAPIError.http(response.statusCode, String(decoding: data, as: UTF8.self))
         }
     }

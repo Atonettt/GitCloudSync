@@ -24,6 +24,21 @@ public struct SyncOptions: Sendable {
     public init() {}
 }
 
+/// What a restore brings back from history.
+public enum RestoreTarget: Sendable, Hashable {
+    /// One file back to a committed version. `sourcePath` is its name in that commit (it differs
+    /// after a rename); the content is written to `path`, today's name.
+    case file(path: String, sourcePath: String, commit: String)
+    /// Every tracked file back to the state recorded in `commit`.
+    case repository(commit: String)
+
+    public var commit: String {
+        switch self {
+        case .file(_, _, let commit), .repository(let commit): commit
+        }
+    }
+}
+
 /// Thrown internally when a merge produced conflicts and was safely aborted.
 struct ConflictDetected: Error {
     let files: [ConflictFile]
@@ -81,6 +96,21 @@ public struct SyncEngine: Sendable {
     ) async -> SyncReport {
         await runReporting { session in
             try await performResolution(choices: choices, session: session, progress: progress)
+        }
+    }
+
+    /// Brings a file or the whole folder back to a committed version.
+    ///
+    /// Nothing is rewritten: current local edits are committed first, a backup ref is created,
+    /// and the old content is recorded as a new commit that syncs like any other change. A
+    /// restore can therefore itself be undone from the history.
+    public func restore(
+        _ target: RestoreTarget,
+        description: String,
+        progress: @escaping @Sendable (SyncPhase) -> Void = { _ in }
+    ) async -> SyncReport {
+        await runReporting { session in
+            try await performRestore(target, description: description, session: session, progress: progress)
         }
     }
 
@@ -163,7 +193,7 @@ public struct SyncEngine: Sendable {
         progress(.downloading)
         try await fetch(session: session)
 
-        var upstream = try await inspector.resolveUpstream(branch: branch)
+        let upstream = try await inspector.resolveUpstream(branch: branch)
         if info.isUnborn, upstream != nil {
             throw SyncFailure(kind: .unbornWithRemote, stage: .preflight)
         }
@@ -171,6 +201,23 @@ public struct SyncEngine: Sendable {
         progress(.committing)
         let committed = try await commitLocalChanges(session: session)
 
+        let (downloaded, uploaded) = try await integrateAndPush(branch: branch, upstream: upstream, session: session, progress: progress)
+
+        if committed == 0, downloaded == 0, uploaded == 0 {
+            return .noChanges
+        }
+        return .success(SyncSummary(committedFiles: committed, downloadedCommits: downloaded, uploadedCommits: uploaded))
+    }
+
+    /// Merges what is on GitHub and pushes, retrying when another Mac pushed in between.
+    /// Expects a fresh fetch; returns the number of commits downloaded and uploaded.
+    private func integrateAndPush(
+        branch: String,
+        upstream initialUpstream: String?,
+        session: SyncSession,
+        progress: @Sendable (SyncPhase) -> Void
+    ) async throws -> (downloaded: Int, uploaded: Int) {
+        var upstream = initialUpstream
         var downloaded = 0
         var uploaded = 0
         var pushed = false
@@ -227,11 +274,7 @@ public struct SyncEngine: Sendable {
                 stderr: session.steps.last?.output ?? ""
             )
         }
-
-        if committed == 0, downloaded == 0, uploaded == 0 {
-            return .noChanges
-        }
-        return .success(SyncSummary(committedFiles: committed, downloadedCommits: downloaded, uploadedCommits: uploaded))
+        return (downloaded, uploaded)
     }
 
     private func performResolution(
@@ -311,6 +354,124 @@ public struct SyncEngine: Sendable {
             }
         }
         return .success(SyncSummary(committedFiles: committed, downloadedCommits: downloaded, uploadedCommits: uploaded))
+    }
+
+    private func performRestore(
+        _ target: RestoreTarget,
+        description: String,
+        session: SyncSession,
+        progress: @Sendable (SyncPhase) -> Void
+    ) async throws -> SyncReport.Outcome {
+        progress(.checking)
+        let info = try await preflight()
+        guard let branch = info.branch else { throw SyncFailure(kind: .detachedHead, stage: .preflight) }
+        guard !info.isUnborn else {
+            throw SyncFailure(kind: .unknown, stage: .restore, message: "仓库还没有任何历史版本")
+        }
+        let verify = try await git(["rev-parse", "--verify", "--quiet", "\(target.commit)^{commit}"], stage: .restore, session: session)
+        guard verify.succeeded else {
+            throw SyncFailure(kind: .unknown, stage: .restore, command: "git rev-parse --verify \(target.commit)",
+                              message: "找不到所选的历史版本", suggestion: "请关闭历史窗口后重新打开再试。")
+        }
+
+        // Start from the newest version so the restore is not undone by the next merge. Without a
+        // connection the restore still happens locally and is uploaded by a later sync.
+        progress(.downloading)
+        var offline: SyncFailure?
+        do {
+            try await fetch(session: session)
+        } catch let failure as SyncFailure where failure.isConnectivity {
+            offline = failure
+        }
+
+        progress(.committing)
+        let committed = try await commitLocalChanges(session: session)
+        var downloaded = 0
+        if offline == nil, let upstream = try await inspector.resolveUpstream(branch: branch) {
+            let (ahead, behind) = try await inspector.aheadBehind(upstream: upstream)
+            if behind > 0 {
+                progress(.merging)
+                try await merge(upstream: upstream, localAhead: ahead, session: session)
+                downloaded = behind
+            }
+        }
+
+        progress(.restoring)
+        let backupRef = "refs/gitcloud-sync/backup/\(Self.timestamp())"
+        _ = try await gitChecked(["update-ref", backupRef, "HEAD"], stage: .restore, session: session)
+        session.warnings.append("已创建备份引用 \(backupRef)，记录了恢复前的版本。")
+        try await applyRestore(target, session: session)
+
+        let staged = try await gitChecked(["diff", "--cached", "--name-status", "-z"], stage: .restore, session: session)
+        let files = Self.parseNameStatus(staged.stdoutData)
+        if files.isEmpty {
+            session.warnings.append("当前内容已经与所选版本相同，无需恢复。")
+        } else {
+            _ = try await gitChecked(["commit", "--quiet", "-m", restoreMessage(description: description, files: files)],
+                                     stage: .commit, session: session, extraConfig: try await identityConfig())
+        }
+
+        if var failure = offline {
+            if files.isEmpty, committed == 0 { return .noChanges }
+            failure.message = "已在本地恢复，但无法连接 GitHub"
+            failure.suggestion = "恢复结果已保存在本地提交中，联网后下次同步会自动上传。"
+            throw failure
+        }
+
+        var uploaded = 0
+        do {
+            let upstream = try await inspector.resolveUpstream(branch: branch)
+            let result = try await integrateAndPush(branch: branch, upstream: upstream, session: session, progress: progress)
+            downloaded += result.downloaded
+            uploaded = result.uploaded
+        } catch var failure as SyncFailure where failure.isConnectivity {
+            failure.message = "已在本地恢复，但上传失败：" + failure.message
+            failure.suggestion = "恢复结果已保存在本地提交中，联网后下次同步会自动上传。"
+            throw failure
+        }
+
+        if files.isEmpty, committed == 0, downloaded == 0, uploaded == 0 { return .noChanges }
+        return .success(SyncSummary(committedFiles: committed, downloadedCommits: downloaded,
+                                    uploadedCommits: uploaded, restoredFiles: files.count))
+    }
+
+    private func applyRestore(_ target: RestoreTarget, session: SyncSession) async throws {
+        switch target {
+        case .file(let path, let sourcePath, let commit) where path == sourcePath:
+            _ = try await gitChecked(["restore", "--source=\(commit)", "--staged", "--worktree", "--", ":(literal)\(path)"],
+                                     stage: .restore, session: session)
+        case .file(let path, let sourcePath, let commit):
+            // The file had another name in that version: write the old content under today's name.
+            let blob = try await client.run(["cat-file", "blob", "\(commit):\(sourcePath)"], timeout: options.localTimeout)
+            guard blob.succeeded else {
+                throw SyncFailure.from(blob, stage: .restore, command: "git cat-file blob \(commit):\(sourcePath)")
+            }
+            let url = repoURL.appendingPathComponent(path)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try blob.stdoutData.write(to: url, options: .atomic)
+            _ = try await gitChecked(["add", "--", ":(literal)\(path)"], stage: .restore, session: session)
+        case .repository(let commit):
+            // Matches every tracked file to that commit, removing files it did not have. Untracked
+            // and ignored files are left alone.
+            _ = try await gitChecked(["restore", "--source=\(commit)", "--staged", "--worktree", "--", ":/"],
+                                     stage: .restore, session: session, timeout: options.localTimeout * 3)
+            try await dropRestoredIgnoredFiles(session: session)
+        }
+    }
+
+    /// Old versions may contain files that are ignored today (for example a `.DS_Store` that was
+    /// committed before the ignore rules existed). Those are not brought back.
+    private func dropRestoredIgnoredFiles(session: SyncSession) async throws {
+        let staged = try await gitChecked(["diff", "--cached", "--name-only", "--diff-filter=A", "-z"], stage: .restore, session: session)
+        let added = staged.stdoutData.split(separator: 0).map { String(decoding: $0, as: UTF8.self) }
+        guard !added.isEmpty else { return }
+        let input = Data((added.joined(separator: "\0") + "\0").utf8)
+        let check = try await client.run(["check-ignore", "--no-index", "-z", "--stdin"], timeout: options.localTimeout, stdin: input)
+        let ignored = check.stdoutData.split(separator: 0).map { String(decoding: $0, as: UTF8.self) }
+        guard !ignored.isEmpty else { return }
+        _ = try await gitChecked(["restore", "--source=HEAD", "--staged", "--worktree", "--"] + ignored.map { ":(literal)\($0)" },
+                                 stage: .restore, session: session)
+        session.warnings.append("以下文件属于忽略规则，未恢复：\(ignored.prefix(5).joined(separator: "、"))\(ignored.count > 5 ? " 等 \(ignored.count) 个" : "")")
     }
 
     // MARK: - Steps
@@ -529,6 +690,16 @@ public struct SyncEngine: Sendable {
         let date = Date().formatted(.dateTime.year().month(.twoDigits).day(.twoDigits).hour().minute())
         var lines = ["GitSync：\(options.machineName) 自动同步 \(date)", ""]
         lines.append("共 \(files.count) 个文件变更：")
+        for file in files.prefix(30) {
+            lines.append("\(file.status)\t\(file.path)")
+        }
+        if files.count > 30 { lines.append("……以及另外 \(files.count - 30) 个文件") }
+        return lines.joined(separator: "\n")
+    }
+
+    private func restoreMessage(description: String, files: [(status: String, path: String)]) -> String {
+        var lines = ["GitSync：\(options.machineName) 恢复\(description)", ""]
+        lines.append("共 \(files.count) 个文件：")
         for file in files.prefix(30) {
             lines.append("\(file.status)\t\(file.path)")
         }

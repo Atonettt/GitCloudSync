@@ -111,6 +111,14 @@ struct RepositoryCardView: View {
                     Label("Finder", systemImage: "folder")
                 }
 
+                Button {
+                    model.activeSheet = .history(repo.id)
+                } label: {
+                    Label("历史版本", systemImage: "clock.arrow.circlepath")
+                }
+                .disabled(model.gitEnvironment == nil || info?.isUnborn == true)
+                .help("查看、预览和恢复以前同步过的版本")
+
                 if info?.webURL != nil {
                     Button {
                         model.openOnGitHub(repo.id)
@@ -141,8 +149,21 @@ struct RepositoryCardView: View {
                     if let remote = info?.remoteURL {
                         Button("复制远程地址") { Clipboard.copy(remote) }
                     }
+                    if let info, info.remoteURL == nil {
+                        Divider()
+                        Button("在 GitHub 上创建仓库…") { model.activeSheet = .createRepository(URL(fileURLWithPath: repo.path)) }
+                    }
                     Divider()
-                    Button("从列表移除…", role: .destructive) { confirmRemove = true }
+                    Button("从列表移除…") { confirmRemove = true }
+                    if info?.isGitHubRemote == true {
+                        Button("删除 GitHub 上的仓库…", role: .destructive) {
+                            model.activeSheet = .deleteRepository(repo.id, github: true, local: false)
+                        }
+                    }
+                    Button("删除本地文件夹…", role: .destructive) {
+                        model.activeSheet = .deleteRepository(repo.id, github: false, local: true)
+                    }
+                    .disabled(syncing)
                 } label: {
                     Label("更多", systemImage: "ellipsis.circle")
                 }

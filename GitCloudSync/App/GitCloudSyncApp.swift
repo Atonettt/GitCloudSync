@@ -83,13 +83,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 enum RepositoryPicker {
     static func present(model: AppModel) {
         let panel = NSOpenPanel()
-        panel.title = "选择 Git 仓库文件夹"
-        panel.message = "选择一个或多个已通过 GitHub Desktop 克隆或发布的仓库文件夹"
+        panel.title = "选择要同步的文件夹"
+        panel.message = "可以选已发布到 GitHub 的仓库，也可以选普通文件夹（将在 GitHub 上创建新仓库）"
         panel.prompt = "添加"
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
-        panel.canCreateDirectories = false
+        panel.canCreateDirectories = true
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK else { return }
         let urls = panel.urls
