@@ -71,6 +71,19 @@ struct StatusBadge: View {
     }
 }
 
+/// The app's own icon (from the bundle), so in-app branding always matches the Dock and Finder.
+struct AppIconView: View {
+    let size: CGFloat
+
+    var body: some View {
+        Image(nsImage: NSApp.applicationIconImage)
+            .resizable()
+            .interpolation(.high)
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
 enum Clipboard {
     static func copy(_ text: String) {
         NSPasteboard.general.clearContents()

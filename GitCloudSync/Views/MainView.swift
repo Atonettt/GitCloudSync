@@ -41,9 +41,7 @@ struct HeaderView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "arrow.triangle.2.circlepath.icloud.fill")
-                .font(.system(size: 26))
-                .foregroundStyle(.tint)
+            AppIconView(size: 44)
             VStack(alignment: .leading, spacing: 2) {
                 Text("GitSync").font(.title2.bold())
                 AuthStatusLabel()

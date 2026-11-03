@@ -9,7 +9,7 @@ struct MenuBarView: View {
         let running = model.settings.autoSyncEnabled
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Image(systemName: model.menuBarSymbol).foregroundStyle(.tint)
+                AppIconView(size: 22)
                 Text("GitSync").font(.headline)
                 Spacer()
                 Text(model.overallStatusText).font(.caption).foregroundStyle(.secondary)

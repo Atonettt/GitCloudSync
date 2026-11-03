@@ -101,7 +101,8 @@ GitCloudSyncCore/      与 UI 无关的核心：ProcessRunner、GitEnvironment�
                        RepositoryInspector、SyncEngine、SyncCoordinator、错误分类、持久化
 GitCloudSyncTests/     单元测试（编译 Core 源码，用临时本地仓库和裸仓库）
 Docs/Architecture.md   架构与状态机
-tools/                 应用图标源图 icon-source.png 与生成脚本 make_icon.swift
+tools/                 图标源图 icon-source.png；make_icon.swift 生成旧版图标（macOS 14/15），
+                       make_icon_fullbleed.swift 生成 GitCloudSync/AppIcon.icon 用的满版图（macOS 26+，避免灰色底框）
 ```
 
 ## 测试与验证情况
