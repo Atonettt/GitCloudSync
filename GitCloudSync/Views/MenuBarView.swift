@@ -6,7 +6,7 @@ struct MenuBarView: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        let running = model.settings.autoSyncEnabled
+        let running = model.autoSyncCount > 0
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 AppIconView(size: 22)
@@ -21,21 +21,21 @@ struct MenuBarView: View {
 
             HStack {
                 Button {
-                    running ? model.pauseAutoSync() : model.startAutoSync()
+                    model.syncAll(trigger: .manualAll)
                 } label: {
-                    Label(running ? "暂停自动同步" : "启动自动同步", systemImage: running ? "pause.fill" : "play.fill")
+                    Label("立即同步全部", systemImage: "arrow.triangle.2.circlepath")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(running ? .orange : .green)
                 Button {
-                    model.syncAll(trigger: .manualAll)
+                    model.setAutoSyncForAll(!running)
                 } label: {
-                    Label("立即同步", systemImage: "arrow.triangle.2.circlepath")
+                    Label(running ? String(localized: "全部暂停") : String(localized: "全部开启"), systemImage: running ? "pause.fill" : "play.fill")
                         .frame(maxWidth: .infinity)
                 }
+                .help(running ? String(localized: "关闭所有仓库的自动同步开关") : String(localized: "打开所有仓库的自动同步开关并立即同步"))
             }
-            .disabled(model.gitEnvironment == nil)
+            .disabled(model.gitEnvironment == nil || model.repositories.isEmpty)
 
             Divider()
 
@@ -68,22 +68,21 @@ struct MenuBarView: View {
                         }
                     }
                 }
-                .frame(maxHeight: 240)
+                // A ScrollView has no height of its own in the menu bar panel; size it to the rows.
+                .frame(height: min(CGFloat(model.repositories.count) * 40, 240))
             }
 
             Divider()
 
-            HStack {
-                Button("打开主窗口") { show(WindowID.main) }
-                Button("日志") { show(WindowID.logs) }
-                Button("设置") {
+            HStack(spacing: 6) {
+                MenuTileButton(title: String(localized: "主窗口"), symbol: "macwindow") { show(WindowID.main) }
+                MenuTileButton(title: String(localized: "日志"), symbol: "list.bullet.rectangle") { show(WindowID.logs) }
+                MenuTileButton(title: String(localized: "设置"), symbol: "gearshape") {
                     NSApp.activate(ignoringOtherApps: true)
                     openSettings()
                 }
-                Spacer()
-                Button("退出") { NSApp.terminate(nil) }
+                MenuTileButton(title: String(localized: "退出"), symbol: "power") { NSApp.terminate(nil) }
             }
-            .buttonStyle(.borderless)
         }
         .padding(14)
         .frame(width: 340)
@@ -92,5 +91,31 @@ struct MenuBarView: View {
     private func show(_ id: String) {
         NSApp.activate(ignoringOtherApps: true)
         openWindow(id: id)
+    }
+}
+
+/// An icon-over-label tile with a visible resting background and a hover highlight, so it reads
+/// as clickable (plain borderless text in the menu bar panel looked disabled).
+private struct MenuTileButton: View {
+    let title: String
+    let symbol: String
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: symbol).font(.system(size: 15, weight: .medium))
+                Text(title).font(.caption)
+            }
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(Color.primary.opacity(hovering ? 0.12 : 0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(title)
     }
 }

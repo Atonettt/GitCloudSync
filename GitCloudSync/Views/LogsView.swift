@@ -41,7 +41,7 @@ struct LogsView: View {
                 }
                 .width(50)
                 TableColumn("耗时") { entry in
-                    Text(entry.duration.map { String(format: "%.1f 秒", $0) } ?? "")
+                    Text(entry.duration.map { String(format: String(localized: "%.1f 秒"), $0) } ?? "")
                 }
                 .width(60)
             }

@@ -30,7 +30,7 @@ public struct ProcessResult: Sendable {
 public struct ProcessLaunchError: Error, LocalizedError, Sendable {
     public let executablePath: String
     public let reason: String
-    public var errorDescription: String? { "无法启动 \(executablePath)：\(reason)" }
+    public var errorDescription: String? { String(localized: "无法启动 \(executablePath)：\(reason)") }
 }
 
 private final class OutputBuffer: @unchecked Sendable {

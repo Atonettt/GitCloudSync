@@ -32,14 +32,14 @@ enum GitHubAPIError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unauthorized: "令牌无效或已过期（HTTP 401）"
-        case .nameTaken: "你的 GitHub 账号下已经有同名仓库"
-        case .missingDeleteScope: "当前登录的令牌没有删除仓库的权限（delete_repo）"
-        case .notFound: "GitHub 上找不到这个仓库"
-        case .cannotCreate(let detail): "当前登录的令牌没有创建仓库的权限（\(detail)）。请用 GitHub CLI 登录，或使用带 repo 权限的经典令牌。"
-        case .http(let code, let body): "GitHub 返回 HTTP \(code)：\(body.prefix(300))"
-        case .network(let message): "无法连接 GitHub：\(message)"
-        case .oauth(let code, let description): "授权失败：\(description ?? code)（\(code)）"
+        case .unauthorized: String(localized: "令牌无效或已过期（HTTP 401）")
+        case .nameTaken: String(localized: "你的 GitHub 账号下已经有同名仓库")
+        case .missingDeleteScope: String(localized: "当前登录的令牌没有删除仓库的权限（delete_repo）")
+        case .notFound: String(localized: "GitHub 上找不到这个仓库")
+        case .cannotCreate(let detail): String(localized: "当前登录的令牌没有创建仓库的权限（\(detail)）。请用 GitHub CLI 登录，或使用带 repo 权限的经典令牌。")
+        case .http(let code, let body): String(localized: "GitHub 返回 HTTP \(code)：\(body.prefix(300))")
+        case .network(let message): String(localized: "无法连接 GitHub：\(message)")
+        case .oauth(let code, let description): String(localized: "授权失败：\(description ?? code)（\(code)）")
         }
     }
 
@@ -220,7 +220,7 @@ enum GitHubAPI {
         do {
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse else {
-                throw GitHubAPIError.network("无效响应")
+                throw GitHubAPIError.network(String(localized: "无效响应"))
             }
             return (data, http)
         } catch let error as GitHubAPIError {

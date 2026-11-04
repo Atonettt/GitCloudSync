@@ -15,8 +15,8 @@ struct ErrorDetailView: View {
                     .foregroundStyle(failure?.mappedStatus.color ?? .red)
                     .font(.title2)
                 VStack(alignment: .leading) {
-                    Text(repo?.displayName ?? "仓库").font(.title3.bold())
-                    Text(failure?.message ?? "没有错误信息").foregroundStyle(.secondary)
+                    Text(repo?.displayName ?? String(localized: "仓库")).font(.title3.bold())
+                    Text(failure?.message ?? String(localized: "没有错误信息")).foregroundStyle(.secondary)
                 }
             }
             if let failure {
@@ -28,7 +28,7 @@ struct ErrorDetailView: View {
                 }
                 Text("Git 输出（stderr）").font(.headline)
                 ScrollView {
-                    Text(failure.stderr.isEmpty ? "（无输出）" : failure.stderr)
+                    Text(failure.stderr.isEmpty ? String(localized: "（无输出）") : failure.stderr)
                         .font(.callout.monospaced())
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -180,8 +180,8 @@ struct ConflictResolutionView: View {
 
     private func summaryText(_ files: [ConflictFile]) -> String {
         let counts = Dictionary(grouping: files) { choices[$0.path] ?? .keepBoth }.mapValues(\.count)
-        let parts = ConflictChoice.allCases.compactMap { c in counts[c].map { "\(c.displayName) \($0) 个" } }
-        return parts.joined(separator: "，") + "。解决前会创建备份引用，然后合并并上传到 GitHub。"
+        let parts = ConflictChoice.allCases.compactMap { c in counts[c].map { String(localized: "\(c.displayName) \($0) 个") } }
+        return parts.joined(separator: String(localized: "，")) + String(localized: "。解决前会创建备份引用，然后合并并上传到 GitHub。")
     }
 }
 
@@ -224,7 +224,7 @@ struct DeviceFlowView: View {
                     Button("重试") { model.auth.startDeviceFlow(clientID: model.settings.oauthClientID) }
                 }
                 Spacer()
-                Button(flow == nil ? "完成" : "取消") {
+                Button(flow == nil ? String(localized: "完成") : String(localized: "取消")) {
                     model.auth.cancelDeviceFlow()
                     dismiss()
                 }

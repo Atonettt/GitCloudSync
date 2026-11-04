@@ -2,9 +2,17 @@ import SwiftUI
 
 struct RepositoryCardView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
     let repo: RepositoryConfig
     @State private var confirmRemove = false
     @State private var confirmAbort = false
+    /// Remembered per repository across launches.
+    @AppStorage private var expanded: Bool
+
+    init(repo: RepositoryConfig) {
+        self.repo = repo
+        _expanded = AppStorage(wrappedValue: false, "repoCard.expanded.\(repo.id.uuidString)")
+    }
 
     var body: some View {
         let runtime = model.runtime[repo.id]
@@ -21,7 +29,7 @@ struct RepositoryCardView: View {
                     Text(phase.displayName).font(.caption).foregroundStyle(.secondary)
                 }
                 if !repo.autoSyncEnabled {
-                    Text("自动同步已暂停").font(.caption).foregroundStyle(.secondary)
+                    Text("自动同步已关闭").font(.caption).foregroundStyle(.secondary)
                 } else if repo.pausedForConflict {
                     Text("因冲突暂停").font(.caption).foregroundStyle(.orange)
                 }
@@ -32,50 +40,80 @@ struct RepositoryCardView: View {
                 ))
                 .toggleStyle(.switch)
                 .controlSize(.small)
-                .help("单独开启或暂停此仓库的自动同步")
+                .help("打开后立即同步一次，之后按间隔自动同步")
             }
 
-            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 4) {
-                GridRow {
-                    label("路径")
-                    Text(repo.path).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
+            // One summary line; the full details fold away so the list stays easy to scan.
+            HStack(spacing: 10) {
+                Text(repo.lastSyncAt.map { String(localized: "\($0.relativeDescription)同步") } ?? String(localized: "从未成功同步"))
+                if let message = repo.lastMessage, !status.isActive {
+                    Text("· \(message)").foregroundStyle(.secondary).lineLimit(1)
                 }
-                GridRow {
-                    label("远程")
-                    if let remote = info?.remoteURL {
-                        Text(remote).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
-                    } else {
-                        Text(info == nil ? "—" : "未配置 origin").foregroundStyle(.orange)
+                if let info {
+                    if info.changedFiles > 0 {
+                        Label("\(info.changedFiles) 个未同步修改", systemImage: "pencil.circle")
+                    }
+                    if info.ahead > 0 { Label("待上传 \(info.ahead)", systemImage: "arrow.up") }
+                    if info.behind > 0 { Label("待下载 \(info.behind)", systemImage: "arrow.down") }
+                    if info.remoteURL == nil {
+                        Label("未关联 GitHub", systemImage: "link.badge.plus").foregroundStyle(.orange)
                     }
                 }
-                GridRow {
-                    label("分支")
-                    HStack(spacing: 12) {
-                        Text(info?.branch ?? (info == nil ? "—" : "分离 HEAD"))
-                        if let info {
-                            if info.changedFiles > 0 {
-                                Label("\(info.changedFiles) 个未提交修改", systemImage: "pencil.circle")
-                            }
-                            if info.ahead > 0 { Label("待上传 \(info.ahead)", systemImage: "arrow.up") }
-                            if info.behind > 0 { Label("待下载 \(info.behind)", systemImage: "arrow.down") }
-                            if info.upstream == nil, info.remoteURL != nil {
+                Spacer(minLength: 8)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(expanded ? String(localized: "收起") : String(localized: "详细信息"))
+                        Image(systemName: "chevron.down")
+                            .rotationEffect(.degrees(expanded ? 180 : 0))
+                    }
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+            }
+            .font(.callout)
+
+            HStack(spacing: 10) {
+                Text("空间").foregroundStyle(.secondary)
+                UsageSummaryView(repoID: repo.id)
+            }
+            .font(.callout)
+
+            if expanded {
+                Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 4) {
+                    GridRow {
+                        label(String(localized: "路径"))
+                        Text(repo.path).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
+                    }
+                    GridRow {
+                        label(String(localized: "远程"))
+                        if let remote = info?.remoteURL {
+                            Text(remote).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
+                        } else {
+                            Text(info == nil ? "—" : String(localized: "未配置 origin")).foregroundStyle(.orange)
+                        }
+                    }
+                    GridRow {
+                        label(String(localized: "分支"))
+                        HStack(spacing: 12) {
+                            Text(info?.branch ?? (info == nil ? "—" : String(localized: "分离 HEAD")))
+                            if let info, info.upstream == nil, info.remoteURL != nil {
                                 Text("远程分支尚不存在").foregroundStyle(.secondary)
                             }
                         }
                     }
-                    .font(.caption)
-                }
-                GridRow {
-                    label("最近同步")
-                    HStack(spacing: 8) {
-                        Text(repo.lastSyncAt.map { "\($0.formatted(date: .abbreviated, time: .shortened))（\($0.relativeDescription)）" } ?? "从未成功同步")
-                        if let message = repo.lastMessage, !status.isActive {
-                            Text("· \(message)").foregroundStyle(.secondary).lineLimit(1)
-                        }
+                    GridRow {
+                        label(String(localized: "最近同步"))
+                        Text(repo.lastSyncAt.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? String(localized: "从未成功同步"))
                     }
                 }
+                .font(.callout)
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .insetBackground(cornerRadius: 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .font(.callout)
 
             if let warnings = runtime?.warnings, !warnings.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
@@ -112,7 +150,8 @@ struct RepositoryCardView: View {
                 }
 
                 Button {
-                    model.activeSheet = .history(repo.id)
+                    NSApp.activate(ignoringOtherApps: true)
+                    openWindow(id: WindowID.history, value: repo.id)
                 } label: {
                     Label("历史版本", systemImage: "clock.arrow.circlepath")
                 }
@@ -130,9 +169,7 @@ struct RepositoryCardView: View {
                 Spacer()
 
                 Menu {
-                    Button(repo.autoSyncEnabled ? "暂停自动同步" : "开启自动同步") {
-                        model.setAutoSync(!repo.autoSyncEnabled, for: repo.id)
-                    }
+                    // Auto sync and disk usage have their own controls on the card.
                     Button("重新检测仓库信息") { Task { await model.refreshInfo(repo.id) } }
                     if repo.lastFailure != nil {
                         Button("查看错误详情") { model.activeSheet = .errorDetail(repo.id) }
@@ -144,7 +181,6 @@ struct RepositoryCardView: View {
                         Button("中止未完成的 Git 操作…") { confirmAbort = true }
                     }
                     Divider()
-                    Button("在终端中打开") { model.openInTerminal(repo.id) }
                     Button("复制路径") { Clipboard.copy(repo.path) }
                     if let remote = info?.remoteURL {
                         Button("复制远程地址") { Clipboard.copy(remote) }
@@ -172,11 +208,7 @@ struct RepositoryCardView: View {
             .controlSize(.regular)
         }
         .padding(14)
-        .background(.background, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(status.isProblem ? status.color.opacity(0.5) : Color.secondary.opacity(0.2))
-        )
+        .glassPanel(tint: status.isProblem ? status.color : nil)
         .confirmationDialog("从列表移除「\(repo.displayName)」？", isPresented: $confirmRemove) {
             Button("移除", role: .destructive) { model.removeRepository(repo.id) }
         } message: {

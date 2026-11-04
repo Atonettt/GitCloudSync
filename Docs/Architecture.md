@@ -18,6 +18,7 @@ GitCloudSyncCore/             与 UI 无关的核心逻辑（App 与单元测试
 ├── SyncEngine                同步状态机、冲突处理、远程版本导出、历史版本恢复
 ├── RepositoryCreator         普通文件夹 → 仓库：预览、git init、忽略规则、隐私邮箱、关联 origin；仓库名规则
 ├── RepositoryRemoval         删除前检查（未提交/未上传/仅在 GitHub 的提交）、GitHub 仓库删除后转为仅本地
+├── RepositoryUsage           文件夹与 .git 占用、按路径累计历史中各版本的存储大小
 ├── HistoryBrowser            只读历史查询：文件版本、已删除文件、时间线、恢复预览、导出/另存副本
 ├── SyncCoordinator (actor)   同仓库互斥 + 多仓库受控并发
 ├── GitErrorClassifier        stderr → 失败类型 → 中文说明与处理建议
@@ -130,7 +131,8 @@ GitHub API POST /user/repos（默认私有，不自动初始化）
 
 ## 7. 调度
 
-* 全局开关 + 间隔（默认 5 分钟），修改间隔立即重建定时任务。
+* 只有每个仓库自己的开关，没有全局开关（配置版本 2；从版本 1 升级时，若旧的全局开关是暂停的，会把所有仓库的开关设为关闭，保持升级前不自动同步的状态）。打开开关立即同步该仓库；「全部暂停 / 全部开启」只是批量拨动这些开关。
+* 定时任务始终运行，间隔默认 5 分钟，每次只同步开关打开且未因冲突暂停的仓库；修改间隔立即重建定时任务。
 * 唤醒后 10 秒、网络恢复后 5 秒自动补一次同步。
 * `SyncCoordinator` 保证同一仓库不会并发，多仓库默认最多 2 个同时运行。
 * 退出时停止调度，等待正在运行的同步最多 30 秒（`applicationShouldTerminate → .terminateLater`）。

@@ -23,12 +23,12 @@ public enum RepositoryNaming {
 
     /// nil when `name` can be used as is; otherwise a message for the user.
     public static func problem(with name: String) -> String? {
-        if name.isEmpty { return "请输入仓库名" }
-        if name.count > maxLength { return "仓库名不能超过 \(maxLength) 个字符" }
-        if name == "." || name == ".." { return "仓库名不能是「.」或「..」" }
-        if name.lowercased().hasSuffix(".git") { return "仓库名不能以 .git 结尾" }
+        if name.isEmpty { return String(localized: "请输入仓库名") }
+        if name.count > maxLength { return String(localized: "仓库名不能超过 \(maxLength) 个字符") }
+        if name == "." || name == ".." { return String(localized: "仓库名不能是「.」或「..」") }
+        if name.lowercased().hasSuffix(".git") { return String(localized: "仓库名不能以 .git 结尾") }
         if !name.unicodeScalars.allSatisfy(isAllowed) {
-            return "GitHub 仓库名只能包含英文字母、数字、-、_ 和 .（本地文件夹名不受影响，可以保留中文）"
+            return String(localized: "GitHub 仓库名只能包含英文字母、数字、-、_ 和 .（本地文件夹名不受影响，可以保留中文）")
         }
         return nil
     }
@@ -81,10 +81,10 @@ public struct RepositoryCreator: Sendable {
         let forbidden = ["/", home, home + "/Desktop", home + "/Documents", home + "/Downloads", home + "/Library",
                          "/Applications", "/System", "/Library", "/Users", "/Volumes"]
         if forbidden.contains(path) {
-            return "不能把「\(folder.lastPathComponent)」整个文件夹作为仓库，请在里面新建一个文件夹再拖进来。"
+            return String(localized: "不能把「\(folder.lastPathComponent)」整个文件夹作为仓库，请在里面新建一个文件夹再拖进来。")
         }
         if path.hasPrefix(home + "/Library/") && !path.hasPrefix(home + "/Library/Mobile Documents/") {
-            return "不能使用系统资源库中的文件夹。"
+            return String(localized: "不能使用系统资源库中的文件夹。")
         }
         return nil
     }
@@ -128,7 +128,7 @@ public struct RepositoryCreator: Sendable {
         } else {
             let root = top.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
             guard Self.canonicalPath(root) == Self.canonicalPath(folder.path) else {
-                throw SyncFailure(kind: .unknown, stage: .preflight, message: "该文件夹位于另一个 Git 仓库内：\(root)")
+                throw SyncFailure(kind: .unknown, stage: .preflight, message: String(localized: "该文件夹位于另一个 Git 仓库内：\(root)"))
             }
         }
         let gitDir = try await checked(client, ["rev-parse", "--absolute-git-dir"]).stdout
@@ -149,7 +149,7 @@ public struct RepositoryCreator: Sendable {
         if existing.succeeded {
             let current = existing.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
             guard current == remoteURL else {
-                throw SyncFailure(kind: .unknown, stage: .preflight, message: "该仓库已经关联了远程地址 \(current)")
+                throw SyncFailure(kind: .unknown, stage: .preflight, message: String(localized: "该仓库已经关联了远程地址 \(current)"))
             }
         } else {
             try await checked(client, ["remote", "add", "origin", remoteURL])

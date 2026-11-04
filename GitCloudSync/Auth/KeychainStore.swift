@@ -59,7 +59,7 @@ enum KeychainStore {
 struct KeychainError: Error, LocalizedError {
     let status: OSStatus
     var errorDescription: String? {
-        let message = SecCopyErrorMessageString(status, nil) as String? ?? "未知错误"
-        return "钥匙串操作失败（\(status)）：\(message)"
+        let message = SecCopyErrorMessageString(status, nil) as String? ?? String(localized: "未知错误")
+        return String(localized: "钥匙串操作失败（\(status)）：\(message)")
     }
 }

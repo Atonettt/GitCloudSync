@@ -19,12 +19,27 @@ struct SettingsView: View {
 struct GeneralSettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var loginError: String?
+    @State private var language = AppLanguage.saved
 
     var body: some View {
         @Bindable var model = model
         Form {
+            Section("语言") {
+                Picker("界面语言", selection: $language) {
+                    ForEach(AppLanguage.allCases) { Text($0.title).tag($0) }
+                }
+                .onChange(of: language) { _, value in value.save() }
+                if language != AppLanguage.atLaunch {
+                    HStack {
+                        Text("重新启动 GitSync 后生效").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Button("立即重新启动") { AppLanguage.relaunch() }
+                    }
+                }
+            }
             Section("自动同步") {
-                Toggle("启用自动同步", isOn: $model.settings.autoSyncEnabled)
+                Text("每个仓库卡片右上角的开关单独控制它是否自动同步；打开后立即同步一次，之后按下面的间隔同步。")
+                    .font(.caption).foregroundStyle(.secondary)
                 Picker("同步间隔", selection: $model.settings.intervalMinutes) {
                     ForEach(intervalOptions, id: \.self) { minutes in
                         Text("\(minutes) 分钟").tag(minutes)
@@ -108,8 +123,8 @@ struct AccountSettingsView: View {
             }
 
             Section("方式一：GitHub CLI（推荐，兼容现有登录）") {
-                Text(auth.ghPath.map { "已找到 gh：\($0)" + (auth.ghLoggedIn ? "，已登录" : "，未登录") }
-                     ?? "未安装 GitHub CLI。可通过 brew install gh 安装。")
+                Text(auth.ghPath.map { String(localized: "已找到 gh：\($0)") + (auth.ghLoggedIn ? String(localized: "，已登录") : String(localized: "，未登录")) }
+                     ?? String(localized: "未安装 GitHub CLI。可通过 brew install gh 安装。"))
                     .font(.callout)
                 HStack {
                     Button("在终端中登录 GitHub CLI…") {
@@ -211,7 +226,7 @@ struct DiagnosticsView: View {
         @Bindable var model = model
         Form {
             Section("Git") {
-                LabeledContent("Git 路径", value: model.gitEnvironment?.gitURL.path ?? "未找到")
+                LabeledContent("Git 路径", value: model.gitEnvironment?.gitURL.path ?? String(localized: "未找到"))
                 LabeledContent("版本", value: model.gitEnvironment?.version ?? "—")
                 HStack {
                     TextField("自定义 git 路径（可选）", text: $customPath)
@@ -231,8 +246,8 @@ struct DiagnosticsView: View {
                         .font(.caption.monospaced())
                         .textSelection(.enabled)
                 }
-                LabeledContent("网络", value: model.isOnline ? "已连接" : "不可用")
-                LabeledContent("GitHub CLI", value: model.auth.ghPath ?? "未安装")
+                LabeledContent("网络", value: model.isOnline ? String(localized: "已连接") : String(localized: "不可用"))
+                LabeledContent("GitHub CLI", value: model.auth.ghPath ?? String(localized: "未安装"))
             }
             Section("数据") {
                 HStack {

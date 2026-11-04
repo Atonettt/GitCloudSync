@@ -34,7 +34,7 @@ struct CreateRepositoryView: View {
             folderSummary
 
             Form {
-                TextField("仓库名", text: $name, prompt: Text("例如 research-notes"))
+                TextField("仓库名", text: $name, prompt: Text(String(localized: "例如 research-notes")))
                     .onChange(of: name) { existingEmpty = nil }
                 if !name.isEmpty, let nameProblem {
                     Text(nameProblem).font(.caption).foregroundStyle(.red)
@@ -125,15 +125,15 @@ struct CreateRepositoryView: View {
                     Label("这个文件夹位于仓库「\(root)」里面，已经随它一起同步，不能再单独创建仓库。", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
                 }
-                Label("约 \(preview.fileCount) 个文件，共 \(ByteCountFormatter.string(fromByteCount: preview.totalBytes, countStyle: .file))"
-                      + (preview.truncated ? "（文件太多，只统计了一部分）" : "")
-                      + "，不含 .DS_Store、Office 临时文件等忽略的文件。",
+                Label(String(localized: "约 \(preview.fileCount) 个文件，共 \(ByteCountFormatter.string(fromByteCount: preview.totalBytes, countStyle: .file))")
+                      + (preview.truncated ? String(localized: "（文件太多，只统计了一部分）") : "")
+                      + String(localized: "，不含 .DS_Store、Office 临时文件等忽略的文件。"),
                       systemImage: "doc.on.doc")
                     .foregroundStyle(.secondary)
                 if !preview.oversized.isEmpty {
-                    Label("\(preview.oversized.count) 个文件超过上传上限，会留在本地、不上传："
-                          + preview.oversized.prefix(3).map { $0.path }.joined(separator: "、")
-                          + (preview.oversized.count > 3 ? " 等" : ""),
+                    Label(String(localized: "\(preview.oversized.count) 个文件超过上传上限，会留在本地、不上传：")
+                          + preview.oversized.prefix(3).map { $0.path }.joined(separator: String(localized: "、"))
+                          + (preview.oversized.count > 3 ? String(localized: " 等") : ""),
                           systemImage: "exclamationmark.circle")
                         .foregroundStyle(.orange)
                 }

@@ -94,10 +94,10 @@ public struct RepositoryInspector: Sendable {
         let path = client.repositoryURL.path
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue else {
-            throw SyncFailure(kind: .folderMissing, stage: .inspect, message: "本地文件夹不存在或已被移动：\(path)")
+            throw SyncFailure(kind: .folderMissing, stage: .inspect, message: String(localized: "本地文件夹不存在或已被移动：\(path)"))
         }
         guard FileManager.default.isReadableFile(atPath: path) else {
-            throw SyncFailure(kind: .permissionDenied, stage: .inspect, message: "没有读取该文件夹的权限：\(path)")
+            throw SyncFailure(kind: .permissionDenied, stage: .inspect, message: String(localized: "没有读取该文件夹的权限：\(path)"))
         }
 
         let top = try await git(["rev-parse", "--show-toplevel"])
@@ -107,7 +107,7 @@ public struct RepositoryInspector: Sendable {
                 failure = SyncFailure(
                     kind: .notARepository, stage: .inspect, command: failure.command,
                     exitCode: failure.exitCode, stderr: failure.stderr,
-                    message: "所选文件夹不是 Git 仓库：\(path)"
+                    message: String(localized: "所选文件夹不是 Git 仓库：\(path)")
                 )
             }
             throw failure

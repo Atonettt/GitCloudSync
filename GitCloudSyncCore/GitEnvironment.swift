@@ -90,7 +90,7 @@ public struct GitEnvironment: Sendable, Equatable {
                     let version = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
                     return .success(GitEnvironment(gitURL: url, version: version, environment: env))
                 }
-                attempts.append("\(path): 退出码 \(result.exitCode) \(result.stderr.trimmingCharacters(in: .whitespacesAndNewlines))")
+                attempts.append(String(localized: "\(path): 退出码 \(result.exitCode) \(result.stderr.trimmingCharacters(in: .whitespacesAndNewlines))"))
             } catch {
                 attempts.append("\(path): \(error.localizedDescription)")
             }
@@ -114,9 +114,9 @@ public struct GitEnvironment: Sendable, Equatable {
 public struct GitDetectionError: Error, LocalizedError, Sendable {
     public let attempts: [String]
     public var errorDescription: String? {
-        var text = "未找到可用的 Git。请安装 Xcode Command Line Tools（终端执行 xcode-select --install）或 Homebrew Git（brew install git）。"
+        var text = String(localized: "未找到可用的 Git。请安装 Xcode Command Line Tools（终端执行 xcode-select --install）或 Homebrew Git（brew install git）。")
         if !attempts.isEmpty {
-            text += "\n\n尝试记录：\n" + attempts.joined(separator: "\n")
+            text += String(localized: "\n\n尝试记录：\n") + attempts.joined(separator: "\n")
         }
         return text
     }

@@ -94,7 +94,7 @@ enum Clipboard {
 extension Date {
     var relativeDescription: String {
         let seconds = Date().timeIntervalSince(self)
-        if seconds < 60 { return "刚刚" }
+        if seconds < 60 { return String(localized: "刚刚") }
         return formatted(.relative(presentation: .named))
     }
 }

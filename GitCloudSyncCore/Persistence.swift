@@ -65,6 +65,8 @@ public struct RepositoryConfig: Codable, Sendable, Identifiable, Hashable {
 public struct AppSettings: Codable, Sendable, Equatable {
     public static let presetIntervals = [1, 3, 5, 10, 15, 30, 60]
 
+    /// The old global auto-sync switch. Since version 2 each repository's own switch decides;
+    /// this is only read when migrating older state files.
     public var autoSyncEnabled = false
     public var intervalMinutes = 5
     public var maxConcurrentSyncs = 2
@@ -107,7 +109,10 @@ public struct AppSettings: Codable, Sendable, Equatable {
 }
 
 public struct PersistedState: Codable, Sendable, Equatable {
-    public var version = 1
+    /// 2: auto sync is controlled per repository only (no global switch).
+    public static let currentVersion = 2
+
+    public var version = PersistedState.currentVersion
     public var settings = AppSettings()
     public var repositories: [RepositoryConfig] = []
 
@@ -126,6 +131,22 @@ public struct PersistedState: Codable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case version, settings, repositories
     }
+
+    /// Upgrades older state in place. Returns true when something changed.
+    ///
+    /// Version 1 had a global switch on top of the per-repository ones. When it was paused, no
+    /// repository synced automatically, so every repository's switch is turned off to keep it that way.
+    @discardableResult
+    public mutating func migrate() -> Bool {
+        guard version < Self.currentVersion else { return false }
+        if version < 2, !settings.autoSyncEnabled {
+            for index in repositories.indices {
+                repositories[index].autoSyncEnabled = false
+            }
+        }
+        version = Self.currentVersion
+        return true
+    }
 }
 
 public enum LogLevel: String, Codable, Sendable, CaseIterable {
@@ -133,10 +154,10 @@ public enum LogLevel: String, Codable, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .info: "信息"
-        case .success: "成功"
-        case .warning: "警告"
-        case .error: "错误"
+        case .info: String(localized: "信息")
+        case .success: String(localized: "成功")
+        case .warning: String(localized: "警告")
+        case .error: String(localized: "错误")
         }
     }
 }
@@ -175,8 +196,8 @@ public struct SyncLogEntry: Codable, Sendable, Identifiable, Hashable {
 
     public var copyText: String {
         var text = "[\(date.formatted(date: .numeric, time: .standard))] \(repositoryName) · \(stage) · \(level.displayName)\n\(result)"
-        if let exitCode { text += "\n退出码：\(exitCode)" }
-        if let duration { text += String(format: "\n耗时：%.2f 秒", duration) }
+        if let exitCode { text += String(localized: "\n退出码：\(exitCode)") }
+        if let duration { text += String(format: String(localized: "\n耗时：%.2f 秒"), duration) }
         if let detail, !detail.isEmpty { text += "\n\n\(detail)" }
         return text
     }

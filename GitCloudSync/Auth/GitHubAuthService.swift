@@ -7,10 +7,10 @@ enum AuthSource: String, Codable, Sendable {
 
     var displayName: String {
         switch self {
-        case .oauthApp: "GitHub OAuth 授权"
-        case .personalToken: "个人访问令牌"
+        case .oauthApp: String(localized: "GitHub OAuth 授权")
+        case .personalToken: String(localized: "个人访问令牌")
         case .githubCLI: "GitHub CLI (gh)"
-        case .systemHelper: "系统 Git 凭据助手"
+        case .systemHelper: String(localized: "系统 Git 凭据助手")
         }
     }
 }
@@ -33,11 +33,11 @@ enum AuthState: Equatable {
 
     var summary: String {
         switch self {
-        case .unknown: "尚未检测"
-        case .checking: "正在检测 GitHub 登录状态…"
-        case .signedIn(let login, let source): "已登录 \(login)（\(source.displayName)）"
-        case .unverified(let source, _): "已找到凭据（\(source.displayName)），暂时无法验证"
-        case .signedOut: "未登录 GitHub"
+        case .unknown: String(localized: "尚未检测")
+        case .checking: String(localized: "正在检测 GitHub 登录状态…")
+        case .signedIn(let login, let source): String(localized: "已登录 \(login)（\(source.displayName)）")
+        case .unverified(let source, _): String(localized: "已找到凭据（\(source.displayName)），暂时无法验证")
+        case .signedOut: String(localized: "未登录 GitHub")
         case .invalid(_, let message): message
         }
     }
@@ -123,7 +123,7 @@ final class GitHubAuthService {
                 state = .unverified(source: source, detail: error.localizedDescription)
             } else {
                 user = nil
-                state = .invalid(source: source, message: "\(source.displayName)凭据已失效：\(error.localizedDescription)。请重新登录。")
+                state = .invalid(source: source, message: String(localized: "\(source.displayName)凭据已失效：\(error.localizedDescription)。请重新登录。"))
             }
         } catch {
             state = .unverified(source: source, detail: error.localizedDescription)
@@ -197,7 +197,7 @@ final class GitHubAuthService {
 
     func signIn(personalToken: String) async -> String? {
         let token = personalToken.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !token.isEmpty else { return "请输入令牌" }
+        guard !token.isEmpty else { return String(localized: "请输入令牌") }
         do {
             let user = try await GitHubAPI.fetchUser(token: token)
             try KeychainStore.save(.init(token: token, source: .personalToken))
@@ -215,14 +215,14 @@ final class GitHubAuthService {
         guard !clientID.isEmpty else {
             deviceFlow = DeviceFlowSession(
                 userCode: "", verificationURL: URL(string: "https://github.com/settings/developers")!,
-                expiresAt: Date(), statusMessage: "请先在设置中填写 OAuth App 的 Client ID（需要在 GitHub 开发者设置中启用 Device Flow）。",
+                expiresAt: Date(), statusMessage: String(localized: "请先在设置中填写 OAuth App 的 Client ID（需要在 GitHub 开发者设置中启用 Device Flow）。"),
                 failed: true
             )
             return
         }
         deviceFlow = DeviceFlowSession(
             userCode: "…", verificationURL: URL(string: "https://github.com/login/device")!,
-            expiresAt: Date().addingTimeInterval(900), statusMessage: "正在向 GitHub 申请授权码…"
+            expiresAt: Date().addingTimeInterval(900), statusMessage: String(localized: "正在向 GitHub 申请授权码…")
         )
         deviceFlowTask = Task { await runDeviceFlow(clientID: clientID) }
     }
@@ -232,7 +232,7 @@ final class GitHubAuthService {
         do {
             code = try await GitHubAPI.requestDeviceCode(clientID: clientID)
         } catch {
-            deviceFlow?.statusMessage = "申请授权码失败：\(error.localizedDescription)"
+            deviceFlow?.statusMessage = String(localized: "申请授权码失败：\(error.localizedDescription)")
             deviceFlow?.failed = true
             return
         }
@@ -240,7 +240,7 @@ final class GitHubAuthService {
         deviceFlow = DeviceFlowSession(
             userCode: code.userCode, verificationURL: url,
             expiresAt: Date().addingTimeInterval(TimeInterval(code.expiresIn)),
-            statusMessage: "请在浏览器中输入上面的验证码并授权，完成后此窗口会自动更新。"
+            statusMessage: String(localized: "请在浏览器中输入上面的验证码并授权，完成后此窗口会自动更新。")
         )
         NSWorkspace.shared.open(url)
 
@@ -261,7 +261,7 @@ final class GitHubAuthService {
                     state = .signedIn(login: user.login, source: .oauthApp)
                     deviceFlow = nil
                 } catch {
-                    deviceFlow?.statusMessage = "已获得令牌但保存/验证失败：\(error.localizedDescription)"
+                    deviceFlow?.statusMessage = String(localized: "已获得令牌但保存/验证失败：\(error.localizedDescription)")
                     deviceFlow?.failed = true
                 }
                 return
@@ -272,7 +272,7 @@ final class GitHubAuthService {
             }
         }
         if !Task.isCancelled, deviceFlow != nil {
-            deviceFlow?.statusMessage = "验证码已过期，请重新开始。"
+            deviceFlow?.statusMessage = String(localized: "验证码已过期，请重新开始。")
             deviceFlow?.failed = true
         }
     }
@@ -296,10 +296,10 @@ final class GitHubAuthService {
     func openGitHubCLILogin() throws {
         guard let gh = GitEnvironment.findExecutable(named: "gh") else {
             throw NSError(domain: "GitSync", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "未找到 GitHub CLI。请先安装：brew install gh，或访问 https://cli.github.com 下载。",
+                NSLocalizedDescriptionKey: String(localized: "未找到 GitHub CLI。请先安装：brew install gh，或访问 https://cli.github.com 下载。"),
             ])
         }
-        let script = """
+        let script = String(localized: """
         #!/bin/zsh
         echo "GitSync — 登录 GitHub CLI"
         echo "将打开浏览器完成授权，完成后回到 GitSync 点击「重新检测」。"
@@ -307,7 +307,7 @@ final class GitHubAuthService {
         "\(gh.path)" auth login --hostname github.com --git-protocol https --web
         echo
         echo "完成。可以关闭此窗口。"
-        """
+        """)
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("gitcloud-gh-login.command")
         try script.write(to: url, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)

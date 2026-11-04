@@ -27,26 +27,40 @@ public struct HistoryCommit: Sendable, Hashable, Identifiable {
 
     public var shortID: String { String(id.prefix(7)) }
 
+    // GitSync writes its commit messages in the app's language, so both forms are recognised:
+    //   GitSync：<Mac> 自动同步 <date>        GitSync: <Mac> auto-sync <date>
+    //   GitSync：合并来自 GitHub 的更新（<Mac>）  GitSync: merged updates from GitHub (<Mac>)
+    //   GitSync：<Mac> 恢复…                  GitSync: <Mac> restored …
+    static let prefixes = ["GitSync：", "GitSync: "]
+    static let autoSyncMarkers = [" 自动同步 ", " auto-sync "]  // i18n-ignore
+    static let mergeMarkers = ["合并来自 GitHub 的更新", "merged updates from GitHub"]  // i18n-ignore
+    static let restoreMarkers = [" 恢复", " restored "]  // i18n-ignore
+
+    /// The message after the "GitSync：" / "GitSync: " prefix; nil for commits not made by GitSync.
+    private var body: Substring? {
+        Self.prefixes.first(where: subject.hasPrefix).map { subject.dropFirst($0.count) }
+    }
+
     public var kind: Kind {
-        guard subject.hasPrefix(Self.prefix) else { return .other }
-        if subject.hasPrefix(Self.prefix + "合并来自 GitHub 的更新") { return .merge }
-        if subject.contains(" 自动同步 ") { return .autoSync }
-        if subject.contains(" 恢复") { return .restore }
+        guard let body else { return .other }
+        if Self.mergeMarkers.contains(where: body.hasPrefix) { return .merge }
+        if Self.autoSyncMarkers.contains(where: body.contains) { return .autoSync }
+        if Self.restoreMarkers.contains(where: body.contains) { return .restore }
         return .other
     }
 
     /// The Mac that made the commit, parsed from GitSync's own commit messages; nil otherwise.
     public var machine: String? {
-        guard subject.hasPrefix(Self.prefix) else { return nil }
-        let body = subject.dropFirst(Self.prefix.count)
+        guard let body else { return nil }
         switch kind {
         case .merge:
-            guard let open = body.lastIndex(of: "（"), let close = body.lastIndex(of: "）"), open < close else { return nil }
+            guard let open = body.lastIndex(where: { $0 == "（" || $0 == "(" }),
+                  let close = body.lastIndex(where: { $0 == "）" || $0 == ")" }), open < close else { return nil }
             return String(body[body.index(after: open)..<close])
         case .autoSync:
-            return body.range(of: " 自动同步 ").map { String(body[..<$0.lowerBound]) }
+            return Self.firstRange(of: Self.autoSyncMarkers, in: body).map { String(body[..<$0.lowerBound]) }
         case .restore:
-            return body.range(of: " 恢复").map { String(body[..<$0.lowerBound]) }
+            return Self.firstRange(of: Self.restoreMarkers, in: body).map { String(body[..<$0.lowerBound]) }
         case .other:
             return nil
         }
@@ -58,14 +72,18 @@ public struct HistoryCommit: Sendable, Hashable, Identifiable {
     /// A one-line description for the timeline.
     public var title: String {
         switch kind {
-        case .autoSync: "自动同步"
-        case .merge: "合并来自 GitHub 的更新"
-        case .restore: String(subject.dropFirst(Self.prefix.count + (machine.map { $0.count + 1 } ?? 0)))
+        case .autoSync: String(localized: "自动同步")
+        case .merge: String(localized: "合并来自 GitHub 的更新")
+        case .restore:
+            // What was restored, without the "GitSync：<Mac> " lead-in.
+            String((body ?? "").dropFirst(machine.map { $0.count + 1 } ?? 0))
         case .other: subject
         }
     }
 
-    static let prefix = "GitSync："
+    private static func firstRange(of markers: [String], in text: Substring) -> Range<Substring.Index>? {
+        markers.lazy.compactMap { text.range(of: $0) }.first
+    }
 }
 
 public struct HistoryChange: Sendable, Hashable {
@@ -83,11 +101,11 @@ public struct HistoryChange: Sendable, Hashable {
 
     public var displayStatus: String {
         switch status {
-        case "A": "新增"
-        case "D": "删除"
-        case "R": "重命名"
-        case "C": "复制"
-        default: "修改"
+        case "A": String(localized: "新增")
+        case "D": String(localized: "删除")
+        case "R": String(localized: "重命名")
+        case "C": String(localized: "复制")
+        default: String(localized: "修改")
         }
     }
 }
@@ -261,7 +279,7 @@ public struct HistoryBrowser: Sendable {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd HHmm"
-        return formatter.string(from: date) + " 版本"
+        return formatter.string(from: date) + String(localized: " 版本")
     }
 
     // MARK: - Parsing

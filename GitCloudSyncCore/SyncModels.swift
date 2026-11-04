@@ -16,17 +16,17 @@ public enum SyncStatus: String, Codable, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .notSynced: "未同步"
-        case .pending: "等待同步"
-        case .checking: "正在检查"
-        case .downloading: "下载中"
-        case .uploading: "上传中"
-        case .success: "同步成功"
-        case .noChanges: "无文件变化"
-        case .failed: "同步失败"
-        case .needsAuth: "需要认证"
-        case .conflict: "存在冲突"
-        case .networkUnavailable: "网络不可用"
+        case .notSynced: String(localized: "未同步")
+        case .pending: String(localized: "等待同步")
+        case .checking: String(localized: "正在检查")
+        case .downloading: String(localized: "下载中")
+        case .uploading: String(localized: "上传中")
+        case .success: String(localized: "同步成功")
+        case .noChanges: String(localized: "无文件变化")
+        case .failed: String(localized: "同步失败")
+        case .needsAuth: String(localized: "需要认证")
+        case .conflict: String(localized: "存在冲突")
+        case .networkUnavailable: String(localized: "网络不可用")
         }
     }
 
@@ -59,12 +59,12 @@ public enum SyncPhase: String, Sendable {
 
     public var displayName: String {
         switch self {
-        case .checking: "正在检查"
-        case .downloading: "正在获取远程更新"
-        case .committing: "正在提交本地修改"
-        case .merging: "正在整合远程更新"
-        case .restoring: "正在恢复历史版本"
-        case .uploading: "正在上传"
+        case .checking: String(localized: "正在检查")
+        case .downloading: String(localized: "正在获取远程更新")
+        case .committing: String(localized: "正在提交本地修改")
+        case .merging: String(localized: "正在整合远程更新")
+        case .restoring: String(localized: "正在恢复历史版本")
+        case .uploading: String(localized: "正在上传")
         }
     }
 }
@@ -74,18 +74,18 @@ public enum SyncStage: String, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .preflight: "同步前检查"
-        case .ignoreRules: "应用忽略规则"
-        case .fetch: "获取远程更新"
-        case .stage: "检测本地修改"
-        case .commit: "提交本地修改"
-        case .merge: "整合远程更新"
-        case .push: "上传到 GitHub"
-        case .conflictResolution: "解决冲突"
-        case .restore: "恢复历史版本"
-        case .history: "读取历史版本"
-        case .inspect: "读取仓库信息"
-        case .auth: "GitHub 认证"
+        case .preflight: String(localized: "同步前检查")
+        case .ignoreRules: String(localized: "应用忽略规则")
+        case .fetch: String(localized: "获取远程更新")
+        case .stage: String(localized: "检测本地修改")
+        case .commit: String(localized: "提交本地修改")
+        case .merge: String(localized: "整合远程更新")
+        case .push: String(localized: "上传到 GitHub")
+        case .conflictResolution: String(localized: "解决冲突")
+        case .restore: String(localized: "恢复历史版本")
+        case .history: String(localized: "读取历史版本")
+        case .inspect: String(localized: "读取仓库信息")
+        case .auth: String(localized: "GitHub 认证")
         }
     }
 }
@@ -149,7 +149,7 @@ public struct SyncFailure: Error, Codable, Sendable, Hashable {
         let kind = GitErrorClassifier.classify(output: combined, timedOut: result.timedOut)
         var stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
         if stderr.isEmpty { stderr = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines) }
-        if result.timedOut { stderr = "（操作超时，已在 \(Int(result.duration)) 秒后终止）\n" + stderr }
+        if result.timedOut { stderr = String(localized: "（操作超时，已在 \(Int(result.duration)) 秒后终止）\n") + stderr }
         return SyncFailure(
             kind: kind,
             stage: stage,
@@ -177,17 +177,17 @@ public struct SyncFailure: Error, Codable, Sendable, Hashable {
 
     /// Text suitable for the clipboard / bug reports.
     public var fullReport: String {
-        """
+        String(localized: """
         阶段：\(stage.displayName)
         说明：\(message)
         命令：\(command.isEmpty ? "-" : command)
         退出码：\(exitCode.map(String.init) ?? "-")
         时间：\(date.formatted(date: .numeric, time: .standard))
         Git 输出：
-        \(stderr.isEmpty ? "（无）" : stderr)
+        \(stderr.isEmpty ? String(localized: "（无）") : stderr)
 
         处理建议：\(suggestion)
-        """
+        """)
     }
 }
 
@@ -207,10 +207,10 @@ public struct ConflictFile: Codable, Sendable, Hashable, Identifiable {
 
     public var description: String {
         switch (localExists, remoteExists) {
-        case (true, true): "本地与远程都修改了此文件"
-        case (true, false): "远程删除了此文件，本地修改了它"
-        case (false, true): "本地删除了此文件，远程修改了它"
-        case (false, false): "双方都删除或重命名了此文件"
+        case (true, true): String(localized: "本地与远程都修改了此文件")
+        case (true, false): String(localized: "远程删除了此文件，本地修改了它")
+        case (false, true): String(localized: "本地删除了此文件，远程修改了它")
+        case (false, false): String(localized: "双方都删除或重命名了此文件")
         }
     }
 }
@@ -220,9 +220,9 @@ public enum ConflictChoice: String, Codable, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .keepLocal: "保留本地"
-        case .keepRemote: "使用远程"
-        case .keepBoth: "保留两者"
+        case .keepLocal: String(localized: "保留本地")
+        case .keepRemote: String(localized: "使用远程")
+        case .keepBoth: String(localized: "保留两者")
         }
     }
 }
@@ -232,10 +232,10 @@ public enum InProgressOperation: String, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .merge: "合并 (merge)"
-        case .rebase: "变基 (rebase)"
-        case .cherryPick: "拣选 (cherry-pick)"
-        case .revert: "还原 (revert)"
+        case .merge: String(localized: "合并 (merge)")
+        case .rebase: String(localized: "变基 (rebase)")
+        case .cherryPick: String(localized: "拣选 (cherry-pick)")
+        case .revert: String(localized: "还原 (revert)")
         }
     }
 }
@@ -249,11 +249,11 @@ public struct SyncSummary: Codable, Sendable, Hashable {
 
     public var text: String {
         var parts: [String] = []
-        if restoredFiles > 0 { parts.append("恢复 \(restoredFiles) 个文件") }
-        if committedFiles > 0 { parts.append("提交 \(committedFiles) 个文件") }
-        if downloadedCommits > 0 { parts.append("下载 \(downloadedCommits) 个提交") }
-        if uploadedCommits > 0 { parts.append("上传 \(uploadedCommits) 个提交") }
-        return parts.isEmpty ? "已是最新" : parts.joined(separator: "，")
+        if restoredFiles > 0 { parts.append(String(localized: "恢复 \(restoredFiles) 个文件")) }
+        if committedFiles > 0 { parts.append(String(localized: "提交 \(committedFiles) 个文件")) }
+        if downloadedCommits > 0 { parts.append(String(localized: "下载 \(downloadedCommits) 个提交")) }
+        if uploadedCommits > 0 { parts.append(String(localized: "上传 \(uploadedCommits) 个提交")) }
+        return parts.isEmpty ? String(localized: "已是最新") : parts.joined(separator: String(localized: "，"))
     }
 }
 
@@ -266,8 +266,8 @@ public struct SyncStepRecord: Codable, Sendable, Hashable {
     public var output: String
 
     public var line: String {
-        let code = timedOut ? "超时" : "退出码 \(exitCode)"
-        return "[\(stage.displayName)] \(command) → \(code)，\(String(format: "%.2f", duration)) 秒"
+        let code = timedOut ? String(localized: "超时") : String(localized: "退出码 \(exitCode)")
+        return String(localized: "[\(stage.displayName)] \(command) → \(code)，\(String(format: "%.2f", duration)) 秒")
     }
 }
 

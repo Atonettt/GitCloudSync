@@ -119,7 +119,7 @@ public struct SyncEngine: Sendable {
     public func exportRemoteVersion(of path: String) async throws -> URL {
         let info = try await inspector.inspect()
         guard let upstream = try await inspector.resolveUpstream(branch: info.branch) else {
-            throw SyncFailure(kind: .unknown, stage: .conflictResolution, message: "找不到远程分支，无法导出远程版本")
+            throw SyncFailure(kind: .unknown, stage: .conflictResolution, message: String(localized: "找不到远程分支，无法导出远程版本"))
         }
         let result = try await client.run(["show", "\(upstream):\(path)"], timeout: options.localTimeout)
         guard result.succeeded else {
@@ -129,7 +129,7 @@ public struct SyncEngine: Sendable {
             .appendingPathComponent("GitSync-Compare", isDirectory: true)
             .appendingPathComponent(Self.timestamp(), isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let target = folder.appendingPathComponent(Self.copyName(for: (path as NSString).lastPathComponent, label: "远程版本"))
+        let target = folder.appendingPathComponent(Self.copyName(for: (path as NSString).lastPathComponent, label: String(localized: "远程版本")))
         try result.stdoutData.write(to: target)
         return target
     }
@@ -292,13 +292,13 @@ public struct SyncEngine: Sendable {
         let committed = try await commitLocalChanges(session: session)
 
         guard let upstream = try await inspector.resolveUpstream(branch: branch) else {
-            throw SyncFailure(kind: .unknown, stage: .conflictResolution, message: "远程分支不存在，无需解决冲突，请直接同步")
+            throw SyncFailure(kind: .unknown, stage: .conflictResolution, message: String(localized: "远程分支不存在，无需解决冲突，请直接同步"))
         }
 
         // A ref that keeps the pre-resolution local commit reachable forever.
         let backupRef = "refs/gitcloud-sync/backup/\(Self.timestamp())"
         _ = try await gitChecked(["update-ref", backupRef, "HEAD"], stage: .conflictResolution, session: session)
-        session.warnings.append("已创建备份引用 \(backupRef)，可随时恢复解决冲突前的本地版本。")
+        session.warnings.append(String(localized: "已创建备份引用 \(backupRef)，可随时恢复解决冲突前的本地版本。"))
 
         var (ahead, behind) = try await inspector.aheadBehind(upstream: upstream)
         var downloaded = 0
@@ -325,7 +325,7 @@ public struct SyncEngine: Sendable {
                     let remaining = try await inspector.unmergedPaths()
                     guard remaining.isEmpty else {
                         throw SyncFailure(kind: .unknown, stage: .conflictResolution,
-                                          message: "仍有未解决的冲突：\(remaining.joined(separator: "、"))")
+                                          message: String(localized: "仍有未解决的冲突：\(remaining.joined(separator: String(localized: "、")))"))
                     }
                 } catch {
                     try? await abortMergeIfNeeded(session: session)
@@ -349,8 +349,8 @@ public struct SyncEngine: Sendable {
                 uploaded = ahead
             case .rejected:
                 throw SyncFailure(kind: .pushRejected, stage: .push,
-                                  message: "冲突已在本地解决，但远程又有新提交",
-                                  suggestion: "冲突解决结果已保存在本地提交中，请再次点击同步。")
+                                  message: String(localized: "冲突已在本地解决，但远程又有新提交"),
+                                  suggestion: String(localized: "冲突解决结果已保存在本地提交中，请再次点击同步。"))
             }
         }
         return .success(SyncSummary(committedFiles: committed, downloadedCommits: downloaded, uploadedCommits: uploaded))
@@ -366,12 +366,12 @@ public struct SyncEngine: Sendable {
         let info = try await preflight()
         guard let branch = info.branch else { throw SyncFailure(kind: .detachedHead, stage: .preflight) }
         guard !info.isUnborn else {
-            throw SyncFailure(kind: .unknown, stage: .restore, message: "仓库还没有任何历史版本")
+            throw SyncFailure(kind: .unknown, stage: .restore, message: String(localized: "仓库还没有任何历史版本"))
         }
         let verify = try await git(["rev-parse", "--verify", "--quiet", "\(target.commit)^{commit}"], stage: .restore, session: session)
         guard verify.succeeded else {
             throw SyncFailure(kind: .unknown, stage: .restore, command: "git rev-parse --verify \(target.commit)",
-                              message: "找不到所选的历史版本", suggestion: "请关闭历史窗口后重新打开再试。")
+                              message: String(localized: "找不到所选的历史版本"), suggestion: String(localized: "请关闭历史窗口后重新打开再试。"))
         }
 
         // Start from the newest version so the restore is not undone by the next merge. Without a
@@ -399,13 +399,13 @@ public struct SyncEngine: Sendable {
         progress(.restoring)
         let backupRef = "refs/gitcloud-sync/backup/\(Self.timestamp())"
         _ = try await gitChecked(["update-ref", backupRef, "HEAD"], stage: .restore, session: session)
-        session.warnings.append("已创建备份引用 \(backupRef)，记录了恢复前的版本。")
+        session.warnings.append(String(localized: "已创建备份引用 \(backupRef)，记录了恢复前的版本。"))
         try await applyRestore(target, session: session)
 
         let staged = try await gitChecked(["diff", "--cached", "--name-status", "-z"], stage: .restore, session: session)
         let files = Self.parseNameStatus(staged.stdoutData)
         if files.isEmpty {
-            session.warnings.append("当前内容已经与所选版本相同，无需恢复。")
+            session.warnings.append(String(localized: "当前内容已经与所选版本相同，无需恢复。"))
         } else {
             _ = try await gitChecked(["commit", "--quiet", "-m", restoreMessage(description: description, files: files)],
                                      stage: .commit, session: session, extraConfig: try await identityConfig())
@@ -413,8 +413,8 @@ public struct SyncEngine: Sendable {
 
         if var failure = offline {
             if files.isEmpty, committed == 0 { return .noChanges }
-            failure.message = "已在本地恢复，但无法连接 GitHub"
-            failure.suggestion = "恢复结果已保存在本地提交中，联网后下次同步会自动上传。"
+            failure.message = String(localized: "已在本地恢复，但无法连接 GitHub")
+            failure.suggestion = String(localized: "恢复结果已保存在本地提交中，联网后下次同步会自动上传。")
             throw failure
         }
 
@@ -425,8 +425,8 @@ public struct SyncEngine: Sendable {
             downloaded += result.downloaded
             uploaded = result.uploaded
         } catch var failure as SyncFailure where failure.isConnectivity {
-            failure.message = "已在本地恢复，但上传失败：" + failure.message
-            failure.suggestion = "恢复结果已保存在本地提交中，联网后下次同步会自动上传。"
+            failure.message = String(localized: "已在本地恢复，但上传失败：") + failure.message
+            failure.suggestion = String(localized: "恢复结果已保存在本地提交中，联网后下次同步会自动上传。")
             throw failure
         }
 
@@ -471,7 +471,7 @@ public struct SyncEngine: Sendable {
         guard !ignored.isEmpty else { return }
         _ = try await gitChecked(["restore", "--source=HEAD", "--staged", "--worktree", "--"] + ignored.map { ":(literal)\($0)" },
                                  stage: .restore, session: session)
-        session.warnings.append("以下文件属于忽略规则，未恢复：\(ignored.prefix(5).joined(separator: "、"))\(ignored.count > 5 ? " 等 \(ignored.count) 个" : "")")
+        session.warnings.append(String(localized: "以下文件属于忽略规则，未恢复：\(ignored.prefix(5).joined(separator: String(localized: "、")))\(ignored.count > 5 ? String(localized: " 等 \(ignored.count) 个") : "")"))
     }
 
     // MARK: - Steps
@@ -480,22 +480,22 @@ public struct SyncEngine: Sendable {
         let info = try await inspector.inspect()
         guard FileManager.default.isWritableFile(atPath: info.topLevelPath) else {
             throw SyncFailure(kind: .permissionDenied, stage: .preflight,
-                              message: "没有写入该文件夹的权限：\(info.topLevelPath)")
+                              message: String(localized: "没有写入该文件夹的权限：\(info.topLevelPath)"))
         }
         if info.indexLocked {
             throw SyncFailure(kind: .indexLocked, stage: .preflight,
-                              stderr: "存在 \(info.gitDirectory)/index.lock")
+                              stderr: String(localized: "存在 \(info.gitDirectory)/index.lock"))
         }
         if let operation = info.inProgressOperation {
-            var message = "仓库中有未完成的\(operation.displayName)操作"
+            var message = String(localized: "仓库中有未完成的\(operation.displayName)操作")
             if !info.unmergedFiles.isEmpty {
-                message += "，未解决的文件：\(info.unmergedFiles.prefix(10).joined(separator: "、"))"
+                message += String(localized: "，未解决的文件：\(info.unmergedFiles.prefix(10).joined(separator: String(localized: "、")))")
             }
             throw SyncFailure(kind: .operationInProgress, stage: .preflight, message: message)
         }
         if !info.unmergedFiles.isEmpty {
             throw SyncFailure(kind: .operationInProgress, stage: .preflight,
-                              message: "仓库中存在未解决的冲突文件：\(info.unmergedFiles.prefix(10).joined(separator: "、"))")
+                              message: String(localized: "仓库中存在未解决的冲突文件：\(info.unmergedFiles.prefix(10).joined(separator: String(localized: "、")))"))
         }
         if info.isDetached {
             throw SyncFailure(kind: .detachedHead, stage: .preflight)
@@ -531,9 +531,9 @@ public struct SyncEngine: Sendable {
                   let size = (attrs[.size] as? NSNumber)?.int64Value else { continue }
             if size > options.largeFileLimitBytes {
                 excluded.append(entry.path)
-                session.warnings.append("「\(entry.path)」大小 \(Self.formatBytes(size))，超过上传上限 \(Self.formatBytes(options.largeFileLimitBytes))，已跳过（文件保留在本地）。建议移出仓库或使用 Git LFS。")
+                session.warnings.append(String(localized: "「\(entry.path)」大小 \(Self.formatBytes(size))，超过上传上限 \(Self.formatBytes(options.largeFileLimitBytes))，已跳过（文件保留在本地）。建议移出仓库或使用 Git LFS。"))
             } else if size > options.largeFileWarningBytes {
-                session.warnings.append("「\(entry.path)」大小 \(Self.formatBytes(size))，接近 GitHub 100 MB 限制，上传可能较慢。")
+                session.warnings.append(String(localized: "「\(entry.path)」大小 \(Self.formatBytes(size))，接近 GitHub 100 MB 限制，上传可能较慢。"))
             }
         }
 
@@ -558,7 +558,7 @@ public struct SyncEngine: Sendable {
                                      timeout: options.localTimeout)
             return
         }
-        let args = ["merge", "--no-edit", "-m", "GitSync：合并来自 GitHub 的更新（\(options.machineName)）", upstream]
+        let args = ["merge", "--no-edit", "-m", String(localized: "GitSync：合并来自 GitHub 的更新（\(options.machineName)）"), upstream]
         let result = try await git(args, stage: .merge, session: session, timeout: options.localTimeout,
                                    extraConfig: try await identityConfig())
         guard !result.succeeded else { return }
@@ -618,7 +618,7 @@ public struct SyncEngine: Sendable {
                 try FileManager.default.createDirectory(at: copyURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try remote.stdoutData.write(to: copyURL, options: .withoutOverwriting)
                 _ = try await gitChecked(["add", "--", path, copyPath], stage: .conflictResolution, session: session)
-                session.warnings.append("「\(path)」保留本地版本，远程版本另存为「\(copyPath)」。")
+                session.warnings.append(String(localized: "「\(path)」保留本地版本，远程版本另存为「\(copyPath)」。"))
             case (true, false):
                 _ = try await gitChecked(["checkout", "--ours", "--", path], stage: .conflictResolution, session: session)
                 _ = try await gitChecked(["add", "--", path], stage: .conflictResolution, session: session)
@@ -639,8 +639,8 @@ public struct SyncEngine: Sendable {
             throw SyncFailure(
                 kind: .operationInProgress, stage: .merge, command: "git merge --abort",
                 exitCode: result.exitCode, stderr: result.stderr,
-                message: "检测到冲突后自动中止合并失败，仓库仍处于合并状态",
-                suggestion: "为避免数据丢失，GitSync 没有执行任何其他清理。请在 GitHub Desktop 中查看并处理该仓库。"
+                message: String(localized: "检测到冲突后自动中止合并失败，仓库仍处于合并状态"),
+                suggestion: String(localized: "为避免数据丢失，GitSync 没有执行任何其他清理。请在 GitHub Desktop 中查看并处理该仓库。")
             )
         }
     }
@@ -688,32 +688,32 @@ public struct SyncEngine: Sendable {
 
     private func commitMessage(files: [(status: String, path: String)]) -> String {
         let date = Date().formatted(.dateTime.year().month(.twoDigits).day(.twoDigits).hour().minute())
-        var lines = ["GitSync：\(options.machineName) 自动同步 \(date)", ""]
-        lines.append("共 \(files.count) 个文件变更：")
+        var lines = [String(localized: "GitSync：\(options.machineName) 自动同步 \(date)"), ""]
+        lines.append(String(localized: "共 \(files.count) 个文件变更："))
         for file in files.prefix(30) {
             lines.append("\(file.status)\t\(file.path)")
         }
-        if files.count > 30 { lines.append("……以及另外 \(files.count - 30) 个文件") }
+        if files.count > 30 { lines.append(String(localized: "……以及另外 \(files.count - 30) 个文件")) }
         return lines.joined(separator: "\n")
     }
 
     private func restoreMessage(description: String, files: [(status: String, path: String)]) -> String {
-        var lines = ["GitSync：\(options.machineName) 恢复\(description)", ""]
-        lines.append("共 \(files.count) 个文件：")
+        var lines = [String(localized: "GitSync：\(options.machineName) 恢复\(description)"), ""]
+        lines.append(String(localized: "共 \(files.count) 个文件："))
         for file in files.prefix(30) {
             lines.append("\(file.status)\t\(file.path)")
         }
-        if files.count > 30 { lines.append("……以及另外 \(files.count - 30) 个文件") }
+        if files.count > 30 { lines.append(String(localized: "……以及另外 \(files.count - 30) 个文件")) }
         return lines.joined(separator: "\n")
     }
 
     private func uniqueCopyPath(for path: String) -> String {
         let directory = (path as NSString).deletingLastPathComponent
         let name = (path as NSString).lastPathComponent
-        var candidate = Self.copyName(for: name, label: "远程版本 \(Self.timestamp(short: true))")
+        var candidate = Self.copyName(for: name, label: String(localized: "远程版本 \(Self.timestamp(short: true))"))
         var counter = 2
         while FileManager.default.fileExists(atPath: repoURL.appendingPathComponent(directory).appendingPathComponent(candidate).path) {
-            candidate = Self.copyName(for: name, label: "远程版本 \(Self.timestamp(short: true)) \(counter)")
+            candidate = Self.copyName(for: name, label: String(localized: "远程版本 \(Self.timestamp(short: true)) \(counter)"))
             counter += 1
         }
         return directory.isEmpty ? candidate : "\(directory)/\(candidate)"

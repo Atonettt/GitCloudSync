@@ -130,10 +130,10 @@ struct DeleteRepositoryView: View {
 
     private var buttonTitle: String {
         switch (deleteOnGitHub, deleteLocal) {
-        case (true, true): "删除两者"
-        case (true, false): "删除 GitHub 仓库"
-        case (false, true): "移到废纸篓"
-        case (false, false): "删除"
+        case (true, true): String(localized: "删除两者")
+        case (true, false): String(localized: "删除 GitHub 仓库")
+        case (false, true): String(localized: "移到废纸篓")
+        case (false, false): String(localized: "删除")
         }
     }
 
@@ -179,10 +179,10 @@ struct DeleteRepositoryView: View {
 
     private func localWarning(_ check: DeletionCheck) -> String {
         var parts: [String] = []
-        if check.uncommittedFiles > 0 { parts.append("\(check.uncommittedFiles) 个文件的修改还没同步") }
-        if check.unpushedCommits > 0 { parts.append("\(check.unpushedCommits) 个提交还没上传") }
-        let tail = deleteOnGitHub ? "，GitHub 仓库也将删除，这些内容只会留在废纸篓里。" : "，建议先同步再删除。"
-        return parts.joined(separator: "，") + tail
+        if check.uncommittedFiles > 0 { parts.append(String(localized: "\(check.uncommittedFiles) 个文件的修改还没同步")) }
+        if check.unpushedCommits > 0 { parts.append(String(localized: "\(check.unpushedCommits) 个提交还没上传")) }
+        let tail = deleteOnGitHub ? String(localized: "，GitHub 仓库也将删除，这些内容只会留在废纸篓里。") : String(localized: "，建议先同步再删除。")
+        return parts.joined(separator: String(localized: "，")) + tail
     }
 
     private func runChecks() async {

@@ -8,20 +8,20 @@ struct MainView: View {
         @Bindable var model = model
         VStack(spacing: 0) {
             HeaderView()
-            Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if let problem = model.gitProblem {
-                        ProblemBanner(title: "未找到可用的 Git", message: problem, symbol: "wrench.and.screwdriver")
+                        ProblemBanner(title: String(localized: "未找到可用的 Git"), message: problem, symbol: "wrench.and.screwdriver")
                     }
                     GlobalControlsView()
                     RepositoryListView()
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
             }
-            Divider()
             ActivityFooterView()
         }
+        .background(GlassBackdrop())
         .frame(minWidth: 780, minHeight: 560)
         .overlay {
             if dropTargeted {
@@ -48,9 +48,9 @@ struct MainView: View {
             switch sheet {
             case .errorDetail(let id): ErrorDetailView(repoID: id)
             case .conflicts(let id): ConflictResolutionView(repoID: id)
-            case .history(let id): HistoryView(repoID: id)
             case .createRepository(let url): CreateRepositoryView(folder: url)
             case .deleteRepository(let id, let github, let local): DeleteRepositoryView(repoID: id, deleteOnGitHub: github, deleteLocal: local)
+            case .storage(let id): StorageView(repoID: id)
             case .deviceFlow: DeviceFlowView()
             }
         }
@@ -86,7 +86,8 @@ struct HeaderView: View {
             .disabled(model.gitEnvironment == nil)
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 14)
+        .padding(.top, 28)   // clears the window buttons (the title bar is hidden)
+        .padding(.bottom, 10)
     }
 }
 
@@ -128,29 +129,18 @@ struct GlobalControlsView: View {
     @State private var showCustom = false
 
     var body: some View {
-        let running = model.settings.autoSyncEnabled
+        let running = model.autoSyncCount > 0
         HStack(alignment: .center, spacing: 18) {
-            Button {
-                running ? model.pauseAutoSync() : model.startAutoSync()
-            } label: {
-                Label(running ? "暂停自动同步" : "启动自动同步",
-                      systemImage: running ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.headline)
-                    .frame(minWidth: 150)
-                    .padding(.vertical, 4)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(running ? .orange : .green)
-            .controlSize(.large)
-            .disabled(model.gitEnvironment == nil)
-
             Button {
                 model.syncAll(trigger: .manualAll)
             } label: {
-                Label("立即同步", systemImage: "arrow.triangle.2.circlepath")
+                Label("立即同步全部", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.headline)
                     .padding(.vertical, 4)
             }
+            .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .help("马上同步列表中的所有仓库，包括自动同步关闭的仓库")
             .disabled(model.repositories.isEmpty || model.gitEnvironment == nil)
 
             Divider().frame(height: 36)
@@ -172,14 +162,14 @@ struct GlobalControlsView: View {
                 if running, let next = model.nextSyncDate {
                     Text("下次同步：\(next.formatted(date: .omitted, time: .shortened))")
                         .font(.caption).foregroundStyle(.secondary)
-                } else if !running {
-                    Text("点击「启动自动同步」后按间隔自动同步")
+                } else if !running, !model.repositories.isEmpty {
+                    Text("打开仓库卡片上的「自动同步」开关即可开启")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
         .padding(16)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+        .glassPanel()
         .popover(isPresented: $showCustom) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("自定义同步间隔").font(.headline)
@@ -231,7 +221,7 @@ struct GlobalControlsView: View {
     }
 
     private func label(_ minutes: Int) -> String {
-        minutes == 60 ? "60 分钟（1 小时）" : "\(minutes) 分钟"
+        minutes == 60 ? String(localized: "60 分钟（1 小时）") : String(localized: "\(minutes) 分钟")
     }
 }
 
@@ -277,7 +267,7 @@ struct EmptyRepositoriesView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(40)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+        .glassPanel()
     }
 }
 
@@ -327,5 +317,7 @@ struct ActivityFooterView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) { Divider().opacity(0.5) }
     }
 }
