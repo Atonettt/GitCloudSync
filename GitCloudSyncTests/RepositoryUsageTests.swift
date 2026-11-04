@@ -65,6 +65,19 @@ final class RepositoryUsageTests: XCTestCase {
         XCTAssertEqual(files.last?.path, "README.md")
     }
 
+    func testCountObjectsParsing() {
+        let output = "count: 12\nsize: 40\nin-pack: 30\npacks: 1\nsize-pack: 100\nprune-packable: 0\ngarbage: 0\nsize-garbage: 4\n"
+        XCTAssertEqual(RepositoryUsageScanner.parseCountObjects(output), 144 * 1024)
+    }
+
+    func testKnownFileSizeIsReused() async throws {
+        try await sandbox.createRemote()
+        let mac = try await sandbox.clone("mac")
+        let usage = try await scanner(mac).measure(reusingFileBytes: 12345)
+        XCTAssertEqual(usage.fileBytes, 12345, "the folder walk is skipped")
+        XCTAssertGreaterThan(usage.historyBytes, 0)
+    }
+
     func testLevels() {
         XCTAssertEqual(RepositoryUsage(fileBytes: 0, historyBytes: 900 << 20).level, .normal)
         XCTAssertEqual(RepositoryUsage(fileBytes: 0, historyBytes: 1 << 30).level, .large)

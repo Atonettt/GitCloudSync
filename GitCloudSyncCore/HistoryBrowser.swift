@@ -165,9 +165,9 @@ public struct HistoryBrowser: Sendable {
         return Self.parseLog(result.stdoutData)
     }
 
-    /// Paths of every file in the latest commit, sorted for display.
-    public func trackedFiles() async throws -> [String] {
-        let result = try await git(["ls-tree", "-r", "--name-only", "-z", "HEAD"])
+    /// Paths of every file in `commit` (the latest one by default), sorted for display.
+    public func trackedFiles(at commit: String = "HEAD") async throws -> [String] {
+        let result = try await git(["ls-tree", "-r", "--name-only", "-z", commit])
         return result.stdoutData.split(separator: 0)
             .map { String(decoding: $0, as: UTF8.self) }
             .sorted { $0.localizedStandardCompare($1) == .orderedAscending }

@@ -6,23 +6,8 @@ struct MainView: View {
 
     var body: some View {
         @Bindable var model = model
-        VStack(spacing: 0) {
-            HeaderView()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let problem = model.gitProblem {
-                        ProblemBanner(title: String(localized: "未找到可用的 Git"), message: problem, symbol: "wrench.and.screwdriver")
-                    }
-                    GlobalControlsView()
-                    RepositoryListView()
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 8)
-            }
-            ActivityFooterView()
-        }
-        .background(GlassBackdrop())
-        .frame(minWidth: 780, minHeight: 560)
+        RepositoryBrowser()
+            .frame(minWidth: 860, minHeight: 560)
         .overlay {
             if dropTargeted {
                 RoundedRectangle(cornerRadius: 14)
@@ -60,37 +45,6 @@ struct MainView: View {
     }
 }
 
-struct HeaderView: View {
-    @Environment(AppModel.self) private var model
-    @Environment(\.openSettings) private var openSettings
-
-    var body: some View {
-        HStack(spacing: 12) {
-            AppIconView(size: 44)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("GitSync").font(.title2.bold())
-                AuthStatusLabel()
-            }
-            Spacer()
-            Button {
-                openSettings()
-            } label: {
-                Label("设置", systemImage: "gearshape")
-            }
-            Button {
-                RepositoryPicker.present(model: model)
-            } label: {
-                Label("添加仓库", systemImage: "plus")
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(model.gitEnvironment == nil)
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 28)   // clears the window buttons (the title bar is hidden)
-        .padding(.bottom, 10)
-    }
-}
-
 struct AuthStatusLabel: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openSettings) private var openSettings
@@ -123,132 +77,6 @@ struct AuthStatusLabel: View {
     }
 }
 
-struct GlobalControlsView: View {
-    @Environment(AppModel.self) private var model
-    @State private var customMinutes = 20
-    @State private var showCustom = false
-
-    var body: some View {
-        let running = model.autoSyncCount > 0
-        HStack(alignment: .center, spacing: 18) {
-            Button {
-                model.syncAll(trigger: .manualAll)
-            } label: {
-                Label("立即同步全部", systemImage: "arrow.triangle.2.circlepath")
-                    .font(.headline)
-                    .padding(.vertical, 4)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .help("马上同步列表中的所有仓库，包括自动同步关闭的仓库")
-            .disabled(model.repositories.isEmpty || model.gitEnvironment == nil)
-
-            Divider().frame(height: 36)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("同步间隔").font(.caption).foregroundStyle(.secondary)
-                intervalMenu
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 4) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(running ? (model.isOnline ? Color.green : Color.gray) : Color.secondary)
-                        .frame(width: 8, height: 8)
-                    Text(model.overallStatusText).font(.callout.weight(.medium))
-                }
-                if running, let next = model.nextSyncDate {
-                    Text("下次同步：\(next.formatted(date: .omitted, time: .shortened))")
-                        .font(.caption).foregroundStyle(.secondary)
-                } else if !running, !model.repositories.isEmpty {
-                    Text("打开仓库卡片上的「自动同步」开关即可开启")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-        }
-        .padding(16)
-        .glassPanel()
-        .popover(isPresented: $showCustom) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("自定义同步间隔").font(.headline)
-                Stepper(value: $customMinutes, in: 1...1440) {
-                    HStack {
-                        TextField("分钟", value: $customMinutes, format: .number)
-                            .frame(width: 70)
-                            .textFieldStyle(.roundedBorder)
-                        Text("分钟")
-                    }
-                }
-                HStack {
-                    Spacer()
-                    Button("取消") { showCustom = false }
-                    Button("应用") {
-                        model.setInterval(minutes: customMinutes)
-                        showCustom = false
-                    }
-                    .keyboardShortcut(.defaultAction)
-                }
-            }
-            .padding()
-            .frame(width: 260)
-        }
-    }
-
-    private var intervalMenu: some View {
-        Menu {
-            ForEach(AppSettings.presetIntervals, id: \.self) { minutes in
-                Button {
-                    model.setInterval(minutes: minutes)
-                } label: {
-                    if model.settings.intervalMinutes == minutes {
-                        Label(label(minutes), systemImage: "checkmark")
-                    } else {
-                        Text(label(minutes))
-                    }
-                }
-            }
-            Divider()
-            Button("自定义…") {
-                customMinutes = model.settings.intervalMinutes
-                showCustom = true
-            }
-        } label: {
-            Text("每 \(label(model.settings.intervalMinutes))")
-        }
-        .fixedSize()
-    }
-
-    private func label(_ minutes: Int) -> String {
-        minutes == 60 ? String(localized: "60 分钟（1 小时）") : String(localized: "\(minutes) 分钟")
-    }
-}
-
-struct RepositoryListView: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("仓库").font(.headline)
-                Text("\(model.repositories.count)")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .padding(.horizontal, 6).padding(.vertical, 1)
-                    .background(.quaternary, in: Capsule())
-                Spacer()
-            }
-            if model.repositories.isEmpty {
-                EmptyRepositoriesView()
-            } else {
-                ForEach(model.repositories) { repo in
-                    RepositoryCardView(repo: repo)
-                }
-            }
-        }
-    }
-}
-
 struct EmptyRepositoriesView: View {
     @Environment(AppModel.self) private var model
 
@@ -267,7 +95,6 @@ struct EmptyRepositoriesView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(40)
-        .glassPanel()
     }
 }
 
@@ -290,34 +117,3 @@ struct ProblemBanner: View {
     }
 }
 
-struct ActivityFooterView: View {
-    @Environment(AppModel.self) private var model
-    @Environment(\.openWindow) private var openWindow
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "clock.arrow.circlepath").foregroundStyle(.secondary)
-            if let latest = model.logStore.entries.first {
-                Image(systemName: latest.level.symbol).foregroundStyle(latest.level.color)
-                Text("\(latest.date.formatted(date: .omitted, time: .standard))  \(latest.result)")
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .font(.callout)
-            } else {
-                Text("暂无同步活动").foregroundStyle(.secondary)
-            }
-            Spacer()
-            let errors = model.repositories.filter { $0.lastStatus.isProblem }.count
-            if errors > 0 {
-                Label("\(errors) 个仓库需要处理", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                    .font(.callout)
-            }
-            Button("查看全部日志") { openWindow(id: WindowID.logs) }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .top) { Divider().opacity(0.5) }
-    }
-}

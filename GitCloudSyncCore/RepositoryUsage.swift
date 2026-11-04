@@ -17,7 +17,7 @@ public struct RepositoryUsage: Sendable, Equatable {
 
     /// Everything in the folder except `.git`.
     public var fileBytes: Int64
-    /// The `.git` folder: every version ever synced.
+    /// Git's object store: every version ever synced.
     public var historyBytes: Int64
     public var measuredAt: Date
 
@@ -55,12 +55,36 @@ public struct RepositoryUsageScanner: Sendable {
         self.client = client
     }
 
-    public func measure() async throws -> RepositoryUsage {
+    /// Measures both sizes. Pass `reusingFileBytes` when the files are known not to have changed:
+    /// walking a large folder is the expensive part, while the history size comes from Git cheaply.
+    public func measure(reusingFileBytes knownFileBytes: Int64? = nil) async throws -> RepositoryUsage {
+        let history = try await historySize()
+        if let knownFileBytes {
+            return RepositoryUsage(fileBytes: knownFileBytes, historyBytes: history)
+        }
         let gitDir = URL(fileURLWithPath: try await git(["rev-parse", "--absolute-git-dir"]).stdout
             .trimmingCharacters(in: .whitespacesAndNewlines))
-        let history = Self.allocatedSize(of: gitDir, skipping: nil)
         let files = Self.allocatedSize(of: client.repositoryURL, skipping: gitDir)
         return RepositoryUsage(fileBytes: files, historyBytes: history)
+    }
+
+    /// Size of Git's object store from `git count-objects -v`, which reads a few directory
+    /// listings instead of every file under `.git`.
+    public func historySize() async throws -> Int64 {
+        let output = try await git(["count-objects", "-v"]).stdout
+        return Self.parseCountObjects(output)
+    }
+
+    /// Adds loose, packed and garbage sizes (reported in KiB) from `git count-objects -v`.
+    static func parseCountObjects(_ output: String) -> Int64 {
+        var kib: Int64 = 0
+        for line in output.split(separator: "\n") {
+            let parts = line.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count == 2, ["size", "size-pack", "size-garbage"].contains(parts[0]),
+                  let value = Int64(parts[1]) else { continue }
+            kib += value
+        }
+        return kib * 1024
     }
 
     /// Paths whose versions take the most space in history, largest first. Includes files that

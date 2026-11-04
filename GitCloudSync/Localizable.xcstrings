@@ -98,6 +98,22 @@
         }
       }
     },
+    " · 自动同步已关闭": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · auto sync off"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · 自动同步已关闭"
+          }
+        }
+      }
+    },
     " 版本": {
       "localizations": {
         "en": {
@@ -178,7 +194,6 @@
         }
       }
     },
-    "%@  %@": {},
     "%@ %lld 个": {
       "localizations": {
         "en": {
@@ -196,22 +211,6 @@
       }
     },
     "%@ · %@": {},
-    "%@ · %@ · %lld 个文件变化": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ · %@ · files changed: %lld"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ · %@ · %lld 个文件变化"
-          }
-        }
-      }
-    },
     "%@ · %lld": {},
     "%@ · 版本历史": {
       "localizations": {
@@ -325,6 +324,38 @@
         }
       }
     },
+    "%@ 已移动到 %@，继续同步": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ moved to %@; syncing continues"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 已移动到 %@，继续同步"
+          }
+        }
+      }
+    },
+    "%@ 已重新定位到 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ relocated to %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 已重新定位到 %@"
+          }
+        }
+      }
+    },
     "%@ 正在同步中，已忽略重复请求": {
       "localizations": {
         "en": {
@@ -369,6 +400,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 正在同步，请等同步结束后再删除。"
+          }
+        }
+      }
+    },
+    "%@ 由 %@ 删除": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleted %@ by %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 由 %@ 删除"
           }
         }
       }
@@ -607,7 +654,6 @@
         }
       }
     },
-    "%lld": {},
     "%lld 个仓库正在同步": {
       "localizations": {
         "en": {
@@ -1042,6 +1088,22 @@
         }
       }
     },
+    "GitHub 上已有名为 %@ 的仓库，仓库名保持为 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub already has a repository named %@; the name stays %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub 上已有名为 %@ 的仓库，仓库名保持为 %@"
+          }
+        }
+      }
+    },
     "GitHub 上已经找不到 %@/%@，按已删除处理": {
       "localizations": {
         "en": {
@@ -1198,6 +1260,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "GitHub 仓库已删除，但更新本地远程设置失败"
+          }
+        }
+      }
+    },
+    "GitHub 仓库已改名为 %@，已更新远程地址": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The GitHub repository was renamed to %@; the remote URL was updated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub 仓库已改名为 %@，已更新远程地址"
+          }
+        }
+      }
+    },
+    "GitHub 仓库已跟随文件夹改名：%@ → %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub repository renamed to match the folder: %@ → %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub 仓库已跟随文件夹改名：%@ → %@"
+          }
+        }
+      }
+    },
+    "GitHub 仓库没能跟着改名，仓库名保持为 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't rename the GitHub repository; the name stays %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub 仓库没能跟着改名，仓库名保持为 %@"
           }
         }
       }
@@ -1521,7 +1631,6 @@
         }
       }
     },
-    "· %@": {},
     "—": {},
     "• %@": {},
     "……以及另外 %lld 个": {
@@ -1610,6 +1719,22 @@
         }
       }
     },
+    "「%@」不是「%@」这个仓库：远程地址和提交记录都对不上。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” isn't the repository “%@”: neither its remote URL nor its commits match."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」不是「%@」这个仓库：远程地址和提交记录都对不上。"
+          }
+        }
+      }
+    },
     "「%@」位于仓库内部，已改为添加仓库根目录：%@": {
       "localizations": {
         "en": {
@@ -1658,6 +1783,22 @@
         }
       }
     },
+    "「%@」在废纸篓中": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is in the Trash"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」在废纸篓中"
+          }
+        }
+      }
+    },
     "「%@」大小 %@，接近 GitHub 100 MB 限制，上传可能较慢。": {
       "localizations": {
         "en": {
@@ -1702,6 +1843,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%@」已经在列表中。"
+          }
+        }
+      }
+    },
+    "「%@」已经是列表中的「%@」。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is already in the list as “%@”."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」已经是列表中的「%@」。"
           }
         }
       }
@@ -1862,6 +2019,22 @@
         }
       }
     },
+    "上次同步": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last Sync"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上次同步"
+          }
+        }
+      }
+    },
     "上次检测：%@": {
       "localizations": {
         "en": {
@@ -1970,6 +2143,22 @@
         }
       }
     },
+    "不同步": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not synced"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不同步"
+          }
+        }
+      }
+    },
     "不能使用系统资源库中的文件夹。": {
       "localizations": {
         "en": {
@@ -2030,6 +2219,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "个人访问令牌"
+          }
+        }
+      }
+    },
+    "中文名会转成拼音，例如「研究资料」→ yan-jiu-zi-liao。GitHub 会把旧地址自动跳转到新名字。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chinese names become pinyin, e.g. “研究资料” → yan-jiu-zi-liao. GitHub redirects the old address to the new name."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中文名会转成拼音，例如「研究资料」→ yan-jiu-zi-liao。GitHub 会把旧地址自动跳转到新名字。"
           }
         }
       }
@@ -2418,6 +2623,22 @@
         }
       }
     },
+    "仓库改名": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仓库改名"
+          }
+        }
+      }
+    },
     "仓库没有配置远程 origin": {
       "localizations": {
         "en": {
@@ -2610,6 +2831,38 @@
         }
       }
     },
+    "使用这个位置": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use This Location"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用这个位置"
+          }
+        }
+      }
+    },
+    "使用这个文件夹": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use This Folder"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用这个文件夹"
+          }
+        }
+      }
+    },
     "使用远程": {
       "localizations": {
         "en": {
@@ -2738,6 +2991,22 @@
         }
       }
     },
+    "修改于 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modified %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改于 %@"
+          }
+        }
+      }
+    },
     "先同步": {
       "localizations": {
         "en": {
@@ -2750,6 +3019,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "先同步"
+          }
+        }
+      }
+    },
+    "全部": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部"
           }
         }
       }
@@ -2846,6 +3131,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "全部开启自动同步"
+          }
+        }
+      }
+    },
+    "全部文件": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All Files"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部文件"
           }
         }
       }
@@ -3398,6 +3699,22 @@
         }
       }
     },
+    "刷新": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新"
+          }
+        }
+      }
+    },
     "加载更早的记录": {
       "localizations": {
         "en": {
@@ -3426,6 +3743,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "历史"
+          }
+        }
+      }
+    },
+    "历史 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "历史 %@"
           }
         }
       }
@@ -3506,6 +3839,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "历史版本"
+          }
+        }
+      }
+    },
+    "原来的位置：%@。如果移动过它，选出新位置后会继续同步，设置和历史都保留。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous location: %@. If you moved it, choose its new location to keep syncing; settings and history are kept."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原来的位置：%@。如果移动过它，选出新位置后会继续同步，设置和历史都保留。"
+          }
+        }
+      }
+    },
+    "双击文件用默认应用打开，双击文件夹进入。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Double-click a file to open it, or a folder to go into it."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "双击文件用默认应用打开，双击文件夹进入。"
+          }
+        }
+      }
+    },
+    "双击进入这个文件夹。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Double-click to open this folder."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "双击进入这个文件夹。"
           }
         }
       }
@@ -3670,6 +4051,22 @@
         }
       }
     },
+    "右侧预览的是删除前的最后一个版本。找回后它会回到原来的位置，并作为一次新的同步上传。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The preview shows the last version before deletion. Recovering puts it back where it was and uploads it as a new sync."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右侧预览的是删除前的最后一个版本。找回后它会回到原来的位置，并作为一次新的同步上传。"
+          }
+        }
+      }
+    },
     "合并 (merge)": {
       "localizations": {
         "en": {
@@ -3714,6 +4111,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "同步"
+          }
+        }
+      }
+    },
+    "同步中": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Syncing"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步中"
           }
         }
       }
@@ -3826,6 +4239,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "同步日志（%lld）"
+          }
+        }
+      }
+    },
+    "同步记录": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步记录"
           }
         }
       }
@@ -4146,38 +4575,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "复制当前筛选结果"
-          }
-        }
-      }
-    },
-    "复制路径": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copy Path"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "复制路径"
-          }
-        }
-      }
-    },
-    "复制远程地址": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copy Remote URL"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "复制远程地址"
           }
         }
       }
@@ -4630,34 +5027,18 @@
         }
       }
     },
-    "已删除的「%@」": {
+    "已同步": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "deleted “%@”"
+            "value": "Synced"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已删除的「%@」"
-          }
-        }
-      }
-    },
-    "已删除的文件": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deleted Files"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已删除的文件"
+            "value": "已同步"
           }
         }
       }
@@ -4722,6 +5103,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "已在本地恢复，但无法连接 GitHub"
+          }
+        }
+      }
+    },
+    "已复制": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已复制"
+          }
+        }
+      }
+    },
+    "已将 %@ 从废纸篓放回 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Put %@ back from the Trash to %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已将 %@ 从废纸篓放回 %@"
           }
         }
       }
@@ -5218,34 +5631,50 @@
         }
       }
     },
-    "待上传 %lld": {
+    "待上传 %lld · 待下载 %lld": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "To upload %lld"
+            "value": "To upload %lld · to download %lld"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "待上传 %lld"
+            "value": "待上传 %lld · 待下载 %lld"
           }
         }
       }
     },
-    "待下载 %lld": {
+    "待同步": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "To download %lld"
+            "value": "Pending"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "待下载 %lld"
+            "value": "待同步"
+          }
+        }
+      }
+    },
+    "快速查看": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick Look"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速查看"
           }
         }
       }
@@ -5338,38 +5767,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "恢复为这个版本"
-          }
-        }
-      }
-    },
-    "恢复到原位置": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restore to Original Location"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "恢复到原位置"
-          }
-        }
-      }
-    },
-    "恢复到原位置…": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restore to Original Location…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "恢复到原位置…"
           }
         }
       }
@@ -5534,6 +5931,38 @@
         }
       }
     },
+    "手动排序": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manual Order"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手动排序"
+          }
+        }
+      }
+    },
+    "打开": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开"
+          }
+        }
+      }
+    },
     "打开 GitHub 授权页": {
       "localizations": {
         "en": {
@@ -5546,22 +5975,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开 GitHub 授权页"
-          }
-        }
-      }
-    },
-    "打开仓库卡片上的「自动同步」开关即可开启": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Turn on “Auto Sync” on a repository card to start"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开仓库卡片上的「自动同步」开关即可开启"
           }
         }
       }
@@ -5710,6 +6123,22 @@
         }
       }
     },
+    "找不到文件夹「%@」": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can't find the folder “%@”"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到文件夹「%@」"
+          }
+        }
+      }
+    },
     "找不到远程分支，无法导出远程版本": {
       "localizations": {
         "en": {
@@ -5738,22 +6167,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "找回…"
-          }
-        }
-      }
-    },
-    "找回「%@」？": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recover “%@”?"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "找回「%@」？"
           }
         }
       }
@@ -5822,6 +6235,22 @@
         }
       }
     },
+    "按名称": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按名称"
+          }
+        }
+      }
+    },
     "按文件": {
       "localizations": {
         "en": {
@@ -5854,6 +6283,38 @@
         }
       }
     },
+    "按最近同步": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last Synced"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按最近同步"
+          }
+        }
+      }
+    },
+    "换个搜索词或筛选条件试试。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try a different search or filter."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "换个搜索词或筛选条件试试。"
+          }
+        }
+      }
+    },
     "授权失败：%@（%@）": {
       "localizations": {
         "en": {
@@ -5866,6 +6327,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "授权失败：%@（%@）"
+          }
+        }
+      }
+    },
+    "排序": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sort"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "排序"
+          }
+        }
+      }
+    },
+    "排序与筛选": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sort and filter"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "排序与筛选"
           }
         }
       }
@@ -5930,6 +6423,22 @@
         }
       }
     },
+    "搜索仓库": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search Repositories"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索仓库"
+          }
+        }
+      }
+    },
     "搜索文件": {
       "localizations": {
         "en": {
@@ -5958,6 +6467,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "搜索日志、错误信息"
+          }
+        }
+      }
+    },
+    "搜索版本": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search Versions"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索版本"
           }
         }
       }
@@ -6026,6 +6551,22 @@
         }
       }
     },
+    "改动的文件（%lld）": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changed Files (%lld)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改动的文件（%lld）"
+          }
+        }
+      }
+    },
     "改回旧内容": {
       "localizations": {
         "en": {
@@ -6038,6 +6579,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "改回旧内容"
+          }
+        }
+      }
+    },
+    "放回原处": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Put Back"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放回原处"
+          }
+        }
+      }
+    },
+    "放回原处后会继续同步。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Put it back to continue syncing."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放回原处后会继续同步。"
           }
         }
       }
@@ -6122,22 +6695,6 @@
         }
       }
     },
-    "文件": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Files"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "文件"
-          }
-        }
-      }
-    },
     "文件 %@ · 历史 %@": {
       "localizations": {
         "en": {
@@ -6170,6 +6727,22 @@
         }
       }
     },
+    "文件夹位置": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder location"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件夹位置"
+          }
+        }
+      }
+    },
     "文件夹可能被移动、重命名或所在磁盘未连接。请恢复文件夹位置，或移除该仓库后重新添加。": {
       "localizations": {
         "en": {
@@ -6186,6 +6759,38 @@
         }
       }
     },
+    "文件夹在废纸篓中：%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The folder is in the Trash: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件夹在废纸篓中：%@"
+          }
+        }
+      }
+    },
+    "文件夹改名时，GitHub 仓库也跟着改名": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename the GitHub repository when its folder is renamed"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件夹改名时，GitHub 仓库也跟着改名"
+          }
+        }
+      }
+    },
     "文件夹里现在的文件": {
       "localizations": {
         "en": {
@@ -6198,22 +6803,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "文件夹里现在的文件"
-          }
-        }
-      }
-    },
-    "文件将以删除前的最后一个版本放回「%@」，并作为一次新的同步上传到 GitHub。": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The file will be put back at “%@” as its last version before deletion and uploaded to GitHub as a new sync."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "文件将以删除前的最后一个版本放回「%@」，并作为一次新的同步上传到 GitHub。"
           }
         }
       }
@@ -6330,6 +6919,38 @@
         }
       }
     },
+    "无未同步修改": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No unsynced changes"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无未同步修改"
+          }
+        }
+      }
+    },
+    "无法使用这个文件夹": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can't Use This Folder"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法使用这个文件夹"
+          }
+        }
+      }
+    },
     "无法另存副本": {
       "localizations": {
         "en": {
@@ -6390,6 +7011,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法把文件夹移到废纸篓：%@"
+          }
+        }
+      }
+    },
+    "无法放回原处": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can't Put Back"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法放回原处"
+          }
+        }
+      }
+    },
+    "无法更新远程地址": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't update the remote URL"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法更新远程地址"
           }
         }
       }
@@ -6490,6 +7143,22 @@
         }
       }
     },
+    "无法预览": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can't Preview"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法预览"
+          }
+        }
+      }
+    },
     "日志": {
       "localizations": {
         "en": {
@@ -6550,6 +7219,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "昨天"
+          }
+        }
+      }
+    },
+    "显示": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示"
           }
         }
       }
@@ -6678,18 +7363,34 @@
         }
       }
     },
-    "最近同步": {
+    "最近同步记录": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Last Sync"
+            "value": "Recent Activity"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最近同步"
+            "value": "最近同步记录"
+          }
+        }
+      }
+    },
+    "最近的同步记录": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent sync activity"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近的同步记录"
           }
         }
       }
@@ -6706,6 +7407,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "有文件上传或下载时通知"
+          }
+        }
+      }
+    },
+    "有问题的排在前面": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Problems First"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有问题的排在前面"
           }
         }
       }
@@ -6898,6 +7615,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "未登录 GitHub"
+          }
+        }
+      }
+    },
+    "未登录 GitHub，GitHub 上的仓库名保持为 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not signed in to GitHub; the repository name stays %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未登录 GitHub，GitHub 上的仓库名保持为 %@"
           }
         }
       }
@@ -7254,6 +7987,22 @@
         }
       }
     },
+    "查看这个文件以前同步过的版本": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See earlier synced versions of this file"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看这个文件以前同步过的版本"
+          }
+        }
+      }
+    },
     "查看错误详情": {
       "localizations": {
         "en": {
@@ -7298,6 +8047,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "检测本地修改"
+          }
+        }
+      }
+    },
+    "概览": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overview"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "概览"
           }
         }
       }
@@ -7458,6 +8223,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在整合远程更新"
+          }
+        }
+      }
+    },
+    "正在查找可能的新位置…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Looking for possible new locations…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在查找可能的新位置…"
           }
         }
       }
@@ -7638,22 +8419,6 @@
         }
       }
     },
-    "每次同步保存一个版本，只能恢复到同步时的状态；两次同步之间的中间修改无法找回。": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Each sync saves one version, so you can only restore states from sync times; edits made between two syncs can't be recovered."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "每次同步保存一个版本，只能恢复到同步时的状态；两次同步之间的中间修改无法找回。"
-          }
-        }
-      }
-    },
     "每次同步保存的所有版本（.git）": {
       "localizations": {
         "en": {
@@ -7746,6 +8511,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "没有找到历史版本"
+          }
+        }
+      }
+    },
+    "没有符合条件的仓库": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Matching Repositories"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有符合条件的仓库"
           }
         }
       }
@@ -7862,6 +8643,22 @@
         }
       }
     },
+    "添加时间": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Added"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加时间"
+          }
+        }
+      }
+    },
     "清空": {
       "localizations": {
         "en": {
@@ -7910,6 +8707,54 @@
         }
       }
     },
+    "清除搜索和筛选后可以拖动排序": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear the search and filter to drag to reorder"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除搜索和筛选后可以拖动排序"
+          }
+        }
+      }
+    },
+    "点击复制": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click to copy"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点击复制"
+          }
+        }
+      }
+    },
+    "点击路径或远程地址即可复制。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click the path or remote URL to copy it."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点击路径或远程地址即可复制。"
+          }
+        }
+      }
+    },
     "版本": {
       "localizations": {
         "en": {
@@ -7942,22 +8787,6 @@
         }
       }
     },
-    "版本详情": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Version Details"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "版本详情"
-          }
-        }
-      }
-    },
     "环境": {
       "localizations": {
         "en": {
@@ -7974,18 +8803,34 @@
         }
       }
     },
-    "用快速查看预览这个版本": {
+    "用快速查看全屏打开这个版本": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preview this version with Quick Look"
+            "value": "Open this version in Quick Look"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "用快速查看预览这个版本"
+            "value": "用快速查看全屏打开这个版本"
+          }
+        }
+      }
+    },
+    "用默认应用打开": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open with the default app"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用默认应用打开"
           }
         }
       }
@@ -8286,6 +9131,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "等待同步"
+          }
+        }
+      }
+    },
+    "筛选文件": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter Files"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "筛选文件"
           }
         }
       }
@@ -8882,6 +9743,22 @@
         }
       }
     },
+    "详细信息：路径、远程地址、分支": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details: path, remote URL, branch"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "详细信息：路径、远程地址、分支"
+          }
+        }
+      }
+    },
     "语言": {
       "localizations": {
         "en": {
@@ -9298,6 +10175,22 @@
         }
       }
     },
+    "超过上限": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too large"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "超过上限"
+          }
+        }
+      }
+    },
     "跟随系统": {
       "localizations": {
         "en": {
@@ -9374,6 +10267,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "运行环境"
+          }
+        }
+      }
+    },
+    "返回上一级": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返回上一级"
           }
         }
       }
@@ -9502,6 +10411,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "这个文件夹已经关联了 %@，请直接用「添加仓库」。"
+          }
+        }
+      }
+    },
+    "这个文件夹是空的": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This folder is empty"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个文件夹是空的"
           }
         }
       }
@@ -9762,6 +10687,38 @@
         }
       }
     },
+    "选中的文件会在这里预览。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The selected file is previewed here."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选中的文件会在这里预览。"
+          }
+        }
+      }
+    },
+    "选择「手动排序」后可以拖动排序": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose “Manual Order” to drag to reorder"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择「手动排序」后可以拖动排序"
+          }
+        }
+      }
+    },
     "选择一个已删除的文件": {
       "localizations": {
         "en": {
@@ -9790,6 +10747,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择一个文件"
+          }
+        }
+      }
+    },
+    "选择一个文件预览": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a File to Preview"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择一个文件预览"
           }
         }
       }
@@ -9826,6 +10799,22 @@
         }
       }
     },
+    "选择文件夹，或直接把文件夹拖进窗口": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose folders, or drag them into the window"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择文件夹，或直接把文件夹拖进窗口"
+          }
+        }
+      }
+    },
     "选择要同步的文件夹": {
       "localizations": {
         "en": {
@@ -9838,6 +10827,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择要同步的文件夹"
+          }
+        }
+      }
+    },
+    "选择这个仓库现在所在的文件夹": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the folder where this repository is now"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择这个仓库现在所在的文件夹"
           }
         }
       }
@@ -9906,6 +10911,62 @@
         }
       }
     },
+    "里面有 %lld 项": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item inside"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld items inside"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "里面有 %lld 项"
+          }
+        }
+      }
+    },
+    "里面有 %lld 项，点左边的文件即可预览。": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item inside. Click a file on the left to preview it."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld items inside. Click a file on the left to preview it."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "里面有 %lld 项，点左边的文件即可预览。"
+          }
+        }
+      }
+    },
     "重命名": {
       "localizations": {
         "en": {
@@ -9938,6 +10999,38 @@
         }
       }
     },
+    "重新定位…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relocate…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新定位…"
+          }
+        }
+      }
+    },
+    "重新定位「%@」": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relocate “%@”"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新定位「%@」"
+          }
+        }
+      }
+    },
     "重新检查并恢复同步": {
       "localizations": {
         "en": {
@@ -9966,22 +11059,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "重新检测"
-          }
-        }
-      }
-    },
-    "重新检测仓库信息": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Re-check Repository Info"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新检测仓库信息"
           }
         }
       }
@@ -10194,6 +11271,22 @@
         }
       }
     },
+    "需要处理": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Needs Attention"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要处理"
+          }
+        }
+      }
+    },
     "需要认证": {
       "localizations": {
         "en": {
@@ -10210,22 +11303,6 @@
         }
       }
     },
-    "预览": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preview"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "预览"
-          }
-        }
-      }
-    },
     "马上同步列表中的所有仓库，包括自动同步关闭的仓库": {
       "localizations": {
         "en": {
@@ -10238,6 +11315,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "马上同步列表中的所有仓库，包括自动同步关闭的仓库"
+          }
+        }
+      }
+    },
+    "马上同步这个仓库": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync this repository now"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "马上同步这个仓库"
           }
         }
       }

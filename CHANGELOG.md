@@ -2,6 +2,24 @@
 
 All notable changes to GitSync are documented here.
 
+## [1.2.0] - 2026-11-04
+
+### Added
+- **Files and preview in the main window**: browse the repository folder like Finder, see which files aren't synced yet, and preview Word, Excel, PDF, images and more inline. Word pages zoom to fit the pane.
+- **Version history preview**: the history window now has three columns (versions, the files in a version, and a live preview), and can show every file as it was in a version, not only the changed ones.
+- **Moved and renamed folders are followed** (like a Finder alias). If a folder really is gone, GitSync finds it with Spotlight, lets you point it to the new place, or puts it back from the Trash.
+- **GitHub follows folder renames**: renaming a synced folder renames its GitHub repository to match (Chinese names become pinyin); your other Mac picks up the new name. Can be turned off in Settings.
+- **Many repositories**: a native sidebar with search, filters, drag-to-reorder and sorting.
+- Click the path or remote URL in the details popover to copy it.
+
+### Changed
+- A native macOS layout: full-height sidebar, toolbar in the title bar, and a single repository page with the Auto Sync switch and Sync Now side by side.
+- The menu bar icon is now the app's cat with a status badge.
+- Smaller app (debug symbols stripped) and cheaper disk-usage checks for large repositories.
+
+### Fixed
+- With macOS set to "prefer tabs", closing version history no longer closes the main window, and the Dock icon always reopens the main window.
+
 ## [1.1.0] - 2026-11-04
 
 ### Added
@@ -25,5 +43,6 @@ All notable changes to GitSync are documented here.
 
 First release: automatic two-way sync of multiple folders with GitHub, safe conflict handling, GitHub sign-in via GitHub CLI, OAuth device flow, or personal access token, ignore rules for macOS and Office temporary files, menu bar operation, and sync logs.
 
+[1.2.0]: https://github.com/Atonettt/GitCloudSync/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Atonettt/GitCloudSync/releases/tag/v1.1.0
 [1.0]: https://github.com/Atonettt/GitCloudSync/releases/tag/v1.0

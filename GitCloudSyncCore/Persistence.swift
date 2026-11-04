@@ -15,6 +15,12 @@ public struct RepositoryConfig: Codable, Sendable, Identifiable, Hashable {
     public var conflictFiles: [ConflictFile]
     /// Set when a conflict was detected; automatic sync skips the repository until resolved.
     public var pausedForConflict: Bool
+    /// A macOS bookmark of the folder, so GitSync can follow it when it is moved or renamed.
+    public var bookmark: Data?
+    /// What the folder was last seen as, used to recognise it after it moved: the origin URL and
+    /// a commit it contains.
+    public var knownRemote: String?
+    public var knownCommit: String?
 
     public init(
         id: UUID = UUID(),
@@ -35,11 +41,15 @@ public struct RepositoryConfig: Codable, Sendable, Identifiable, Hashable {
         self.lastFailure = nil
         self.conflictFiles = []
         self.pausedForConflict = false
+        self.bookmark = nil
+        self.knownRemote = nil
+        self.knownCommit = nil
     }
 
     enum CodingKeys: String, CodingKey {
         case id, path, displayName, autoSyncEnabled, addedAt, lastSyncAt, lastAttemptAt
         case lastStatus, lastMessage, lastFailure, conflictFiles, pausedForConflict
+        case bookmark, knownRemote, knownCommit
     }
 
     public init(from decoder: Decoder) throws {
@@ -59,6 +69,9 @@ public struct RepositoryConfig: Codable, Sendable, Identifiable, Hashable {
         lastFailure = try c.decodeIfPresent(SyncFailure.self, forKey: .lastFailure)
         conflictFiles = try c.decodeIfPresent([ConflictFile].self, forKey: .conflictFiles) ?? []
         pausedForConflict = try c.decodeIfPresent(Bool.self, forKey: .pausedForConflict) ?? false
+        bookmark = try c.decodeIfPresent(Data.self, forKey: .bookmark)
+        knownRemote = try c.decodeIfPresent(String.self, forKey: .knownRemote)
+        knownCommit = try c.decodeIfPresent(String.self, forKey: .knownCommit)
     }
 }
 
@@ -76,6 +89,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var oauthClientID = ""
     public var showDockIcon = true
     public var syncOnWake = true
+    /// Renaming a repository's folder renames its GitHub repository to match.
+    public var renameRemoteWithFolder = true
     public var notifyOnFailure = true
     public var notifyOnConflict = true
     public var notifyOnAuthProblem = true
@@ -95,6 +110,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         oauthClientID = try c.decodeIfPresent(String.self, forKey: .oauthClientID) ?? d.oauthClientID
         showDockIcon = try c.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? d.showDockIcon
         syncOnWake = try c.decodeIfPresent(Bool.self, forKey: .syncOnWake) ?? d.syncOnWake
+        renameRemoteWithFolder = try c.decodeIfPresent(Bool.self, forKey: .renameRemoteWithFolder) ?? d.renameRemoteWithFolder
         notifyOnFailure = try c.decodeIfPresent(Bool.self, forKey: .notifyOnFailure) ?? d.notifyOnFailure
         notifyOnConflict = try c.decodeIfPresent(Bool.self, forKey: .notifyOnConflict) ?? d.notifyOnConflict
         notifyOnAuthProblem = try c.decodeIfPresent(Bool.self, forKey: .notifyOnAuthProblem) ?? d.notifyOnAuthProblem
@@ -103,7 +119,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case autoSyncEnabled, intervalMinutes, maxConcurrentSyncs, ignorePatterns, largeFileLimitMB
-        case customGitPath, oauthClientID, showDockIcon, syncOnWake
+        case customGitPath, oauthClientID, showDockIcon, syncOnWake, renameRemoteWithFolder
         case notifyOnFailure, notifyOnConflict, notifyOnAuthProblem, notifyOnChanges
     }
 }

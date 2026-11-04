@@ -47,6 +47,21 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(String(decoding: oldest, as: UTF8.self), "v1")
     }
 
+    func testFilesOfAnOlderVersion() async throws {
+        try await sandbox.createRemote()
+        let mac = try await sandbox.clone("mac")
+        try await syncVersions(["v1"], of: "a.txt", in: mac)
+        let first = try await browser(mac).timeline().first!.id
+        try FileManager.default.removeItem(at: mac.appendingPathComponent("a.txt"))
+        try await syncVersions(["b"], of: "资料/b.txt", in: mac)
+
+        let then = try await browser(mac).trackedFiles(at: first)
+        let now = try await browser(mac).trackedFiles()
+
+        XCTAssertEqual(Set(then), ["a.txt", "README.md"])
+        XCTAssertEqual(Set(now), ["README.md", "资料/b.txt"])
+    }
+
     func testCommitMessagesAreParsed() {
         let auto = HistoryCommit(id: "a", parents: [], date: Date(), author: "x", subject: "GitSync：我的 MacBook 自动同步 2026/11/03 15:30")
         XCTAssertEqual(auto.kind, .autoSync)

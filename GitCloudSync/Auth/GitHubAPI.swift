@@ -118,6 +118,45 @@ enum GitHubAPI {
         }
     }
 
+    /// Renames a repository. GitHub keeps redirecting the old URLs to the new name.
+    static func renameRepository(token: String, owner: String, name: String, to newName: String) async throws -> CreatedRepository {
+        var request = repositoryRequest(token: token, owner: owner, name: name)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["name": newName])
+        let (data, response) = try await perform(request)
+        let text = String(decoding: data, as: UTF8.self)
+        switch response.statusCode {
+        case 200: return try JSONDecoder().decode(CreatedRepository.self, from: data)
+        case 401: throw GitHubAPIError.unauthorized
+        case 404: throw GitHubAPIError.notFound
+        case 422 where text.contains("already exists"): throw GitHubAPIError.nameTaken
+        default: throw GitHubAPIError.http(response.statusCode, text)
+        }
+    }
+
+    /// The repository as GitHub knows it now; for a renamed repository GitHub redirects to it.
+    static func repository(token: String, owner: String, name: String) async throws -> CreatedRepository {
+        let (data, response) = try await perform(repositoryRequest(token: token, owner: owner, name: name))
+        switch response.statusCode {
+        case 200: return try JSONDecoder().decode(CreatedRepository.self, from: data)
+        case 401: throw GitHubAPIError.unauthorized
+        case 404: throw GitHubAPIError.notFound
+        default: throw GitHubAPIError.http(response.statusCode, String(decoding: data, as: UTF8.self))
+        }
+    }
+
+    private static func repositoryRequest(token: String, owner: String, name: String) -> URLRequest {
+        var components = URLComponents(string: "https://api.github.com")!
+        components.path = "/repos/\(owner)/\(name)"
+        var request = URLRequest(url: components.url!)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        request.setValue("GitSync", forHTTPHeaderField: "User-Agent")
+        return request
+    }
+
     /// Permanently deletes a repository. Needs the `delete_repo` scope (classic tokens, GitHub CLI)
     /// or Administration write access (fine-grained tokens).
     static func deleteRepository(token: String, owner: String, name: String) async throws {

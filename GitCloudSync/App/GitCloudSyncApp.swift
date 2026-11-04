@@ -11,8 +11,7 @@ struct GitCloudSyncApp: App {
             MainView()
                 .environment(model)
         }
-        .defaultSize(width: 920, height: 720)
-        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1040, height: 720)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("添加仓库…") { RepositoryPicker.present(model: model) }
@@ -29,14 +28,13 @@ struct GitCloudSyncApp: App {
             }
         }
 
-        WindowGroup("版本历史", id: WindowID.history, for: UUID.self) { $repoID in
-            if let repoID {
-                HistoryView(repoID: repoID)
+        WindowGroup("版本历史", id: WindowID.history, for: HistoryRequest.self) { $request in
+            if let request {
+                HistoryView(request: request)
                     .environment(model)
             }
         }
-        .defaultSize(width: 1000, height: 660)
-        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1280, height: 780)
 
         Window("同步日志", id: WindowID.logs) {
             LogsView()
@@ -53,10 +51,68 @@ struct GitCloudSyncApp: App {
             MenuBarView()
                 .environment(model)
         } label: {
-            Image(systemName: model.menuBarSymbol)
+            MenuBarLabel(badge: model.menuBarBadge)
         }
         .menuBarExtraStyle(.window)
     }
+}
+
+/// The menu bar icon. It is always on screen, so it also listens for requests to show the main
+/// window (for example a click on the Dock icon when no window is open).
+private struct MenuBarLabel: View {
+    @Environment(\.openWindow) private var openWindow
+    let badge: String
+
+    var body: some View {
+        Image(nsImage: MenuBarIcon.image(badge: badge))
+            .onReceive(NotificationCenter.default.publisher(for: .showMainWindow)) { _ in
+                NSApp.activate(ignoringOtherApps: true)
+                openWindow(id: WindowID.main)
+            }
+    }
+}
+
+/// The app icon's cat in one colour with a small status badge in the corner, like the sync badge
+/// on the app icon. It's a template image, so it follows the light or dark menu bar.
+@MainActor
+enum MenuBarIcon {
+    private static var cache: [String: NSImage] = [:]
+
+    static func image(badge: String) -> NSImage {
+        if let cached = cache[badge] { return cached }
+        let size = NSSize(width: 21, height: 18)
+        let scale = 3
+        let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: Int(size.width) * scale, pixelsHigh: Int(size.height) * scale,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+        )!
+        rep.size = size
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSImage(named: "MenuBarCat")?.draw(in: NSRect(x: 0, y: 0, width: 18, height: 18))
+        // Clear a ring around the badge so it stands apart from the cat, as on the app icon.
+        let center = NSPoint(x: 15.5, y: 5)
+        NSGraphicsContext.current?.compositingOperation = .clear
+        NSBezierPath(ovalIn: NSRect(x: center.x - 5.5, y: center.y - 5.5, width: 11, height: 11)).fill()
+        NSGraphicsContext.current?.compositingOperation = .sourceOver
+        if let symbol = NSImage(systemSymbolName: badge, accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 7.5, weight: .heavy)) {
+            let s = symbol.size
+            symbol.draw(in: NSRect(x: center.x - s.width / 2, y: center.y - s.height / 2, width: s.width, height: s.height))
+        }
+        NSGraphicsContext.restoreGraphicsState()
+
+        let image = NSImage(size: size)
+        image.addRepresentation(rep)
+        image.isTemplate = true
+        cache[badge] = image
+        return image
+    }
+}
+
+extension Notification.Name {
+    static let showMainWindow = Notification.Name("GitSyncShowMainWindow")
 }
 
 enum WindowID {
@@ -66,6 +122,12 @@ enum WindowID {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Keep every window separate even when macOS is set to "prefer tabs: always"; otherwise
+        // version history opens as a tab of the main window and closing it closes both.
+        NSWindow.allowsAutomaticWindowTabbing = false
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppModel.shared.start()
     }
@@ -85,8 +147,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return .terminateLater
     }
 
+    /// Clicking the Dock icon with no window open shows the main window (not a version-history window).
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        true
+        guard !flag else { return true }
+        NotificationCenter.default.post(name: .showMainWindow, object: nil)
+        return false
     }
 }
 

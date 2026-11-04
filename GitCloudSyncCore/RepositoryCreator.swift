@@ -5,11 +5,16 @@ import Foundation
 public enum RepositoryNaming {
     public static let maxLength = 100
 
-    /// A valid name derived from a folder name: unsupported characters become "-". Returns ""
-    /// when nothing usable is left (for example a purely Chinese folder name).
+    /// A valid name derived from a folder name: Chinese is written in pinyin, accents are dropped,
+    /// and other unsupported characters become "-" ("研究资料 2026" → "yan-jiu-zi-liao-2026").
+    /// Returns "" when nothing usable is left.
     public static func suggestedName(for folderName: String) -> String {
+        // Only names with Chinese characters go through pinyin; the transform also respaces punctuation.
+        let hasChinese = folderName.unicodeScalars.contains { $0.properties.isIdeographic }
+        let pinyin = hasChinese ? folderName.applyingTransform(.mandarinToLatin, reverse: false) ?? folderName : folderName
+        let latin = pinyin.applyingTransform(.stripDiacritics, reverse: false) ?? pinyin
         var result = ""
-        for scalar in folderName.unicodeScalars {
+        for scalar in latin.unicodeScalars {
             if isAllowed(scalar) {
                 result.unicodeScalars.append(scalar)
             } else if !result.hasSuffix("-") {

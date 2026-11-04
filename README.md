@@ -31,6 +31,9 @@
 - **Version history** — browse every synced version by time, by file, or among recently deleted files; preview with Quick Look, save a copy, or restore a single file or the whole folder.
 - **Never overwrites** — when the same file changed on two Macs, you choose what to keep (or keep both). GitSync never force-pushes or rewrites history.
 - **Disk usage at a glance** — see how much space files and history take, with a warning before a repository grows past GitHub's recommended size.
+- **Follows your folders** — move or rename a synced folder and GitSync keeps tracking it; if it really is gone, GitSync helps you find it.
+- **Browse and preview** — see the folder's files and preview Word, PDF, images and more right in the window, now or in any earlier version.
+- **Built for many repositories** — a searchable, filterable sidebar you can reorder by dragging.
 - **Delete independently** — remove the repository on GitHub or the local folder (to the Trash) without touching the other.
 - **Native and bilingual** — a SwiftUI app with Liquid Glass on macOS 26, in English and Simplified Chinese.
 

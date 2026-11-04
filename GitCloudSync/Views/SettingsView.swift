@@ -50,6 +50,10 @@ struct GeneralSettingsView: View {
                 Stepper("最多同时同步 \(model.settings.maxConcurrentSyncs) 个仓库",
                         value: $model.settings.maxConcurrentSyncs, in: 1...6)
                 Toggle("Mac 唤醒后立即同步", isOn: $model.settings.syncOnWake)
+                Toggle(isOn: $model.settings.renameRemoteWithFolder) {
+                    Text("文件夹改名时，GitHub 仓库也跟着改名")
+                    Text("中文名会转成拼音，例如「研究资料」→ yan-jiu-zi-liao。GitHub 会把旧地址自动跳转到新名字。")
+                }
             }
             Section("后台运行") {
                 Toggle("登录 macOS 时自动启动", isOn: Binding(

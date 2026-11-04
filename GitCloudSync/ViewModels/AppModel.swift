@@ -11,6 +11,11 @@ struct RepoRuntime {
     var lastSteps: [SyncStepRecord] = []
     var usage: RepositoryUsage?
     var measuringUsage = false
+    /// Set when the folder was found in the Trash.
+    var trashedURL: URL?
+    /// Possible new locations of a folder that can't be found.
+    var candidates: [URL] = []
+    var searchingCandidates = false
 }
 
 enum SyncTrigger: String {
@@ -151,6 +156,11 @@ final class AppModel {
         center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { _ in
             Task { @MainActor in AppModel.shared.handleWake() }
         }
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
+            Task { @MainActor in
+                for repo in AppModel.shared.repositories { AppModel.shared.followFolder(repo.id) }
+            }
+        }
         center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { _ in
             Task { @MainActor in AppModel.shared.log(nil, String(localized: "系统"), .info, String(localized: "系统即将休眠")) }
         }
@@ -229,10 +239,12 @@ final class AppModel {
                     problems.append(String(localized: "「\(url.lastPathComponent)」已经在列表中。"))
                     continue
                 }
-                let config = RepositoryConfig(
+                var config = RepositoryConfig(
                     path: info.topLevelPath,
                     displayName: URL(fileURLWithPath: info.topLevelPath).lastPathComponent
                 )
+                config.bookmark = RepositoryLocator.bookmark(for: URL(fileURLWithPath: info.topLevelPath))
+                config.knownRemote = info.remoteURL
                 repositories.append(config)
                 added.append(config.id)
                 runtime[config.id, default: RepoRuntime()].info = info
@@ -439,6 +451,12 @@ final class AppModel {
 
     /// A repository's switch is the only auto-sync control: turning it on syncs right away and then
     /// on every interval.
+    /// Reorders the list (drag and drop in manual order). The menu bar panel follows the same order.
+    func moveRepositories(from source: IndexSet, to destination: Int) {
+        repositories.move(fromOffsets: source, toOffset: destination)
+        persist()
+    }
+
     func setAutoSync(_ enabled: Bool, for id: UUID) {
         guard let repo = repository(id), repo.autoSyncEnabled != enabled else { return }
         update(id) { $0.autoSyncEnabled = enabled }
@@ -476,11 +494,21 @@ final class AppModel {
     }
 
     func refreshInfo(_ id: UUID) async {
+        followFolder(id)
         guard let git = gitEnvironment, let repo = repository(id) else { return }
-        let client = GitClient(repositoryURL: URL(fileURLWithPath: repo.path), git: git)
+        let folder = URL(fileURLWithPath: repo.path)
+        let client = GitClient(repositoryURL: folder, git: git)
         do {
             let info = try await RepositoryInspector(client: client).inspect()
             runtime[id, default: RepoRuntime()].info = info
+            // Remember what this repository looks like so it can be recognised after a move.
+            let identity = await RepositoryLocator(git: git).identity(of: folder)
+            if repo.knownRemote != identity.remote || repo.knownCommit != identity.commit {
+                update(id) {
+                    $0.knownRemote = identity.remote ?? $0.knownRemote
+                    $0.knownCommit = identity.commit ?? $0.knownCommit
+                }
+            }
         } catch let failure as SyncFailure {
             runtime[id, default: RepoRuntime()].info = nil
             if failure.kind == .folderMissing || failure.kind == .notARepository || failure.kind == .permissionDenied {
@@ -490,7 +518,174 @@ final class AppModel {
                     $0.lastMessage = failure.message
                 }
             }
+            if failure.kind == .folderMissing { Task { await findCandidates(id) } }
         } catch {}
+    }
+
+    /// Repository-relative paths with changes that are not synced yet (from `git status`).
+    func unsyncedPaths(_ id: UUID) async -> Set<String> {
+        guard let repo = repository(id), let git = gitEnvironment else { return [] }
+        let client = GitClient(repositoryURL: URL(fileURLWithPath: repo.path), git: git)
+        guard let result = try? await client.run(["status", "--porcelain=v1", "-z", "--untracked-files=all"], timeout: 60),
+              result.succeeded else { return [] }
+        return Set(StatusEntry.parse(result.stdoutData).map(\.path))
+    }
+
+    // MARK: - Moved folders
+
+    /// Follows a folder that was moved or renamed (via its bookmark). Returns false when the
+    /// folder can't be used where it is: missing, or in the Trash.
+    @discardableResult
+    func followFolder(_ id: UUID) -> Bool {
+        guard let repo = repository(id) else { return false }
+        switch RepositoryLocator.locate(path: repo.path, bookmark: repo.bookmark) {
+        case .unchanged:
+            runtime[id]?.trashedURL = nil
+            if repo.bookmark == nil {
+                update(id) { $0.bookmark = RepositoryLocator.bookmark(for: URL(fileURLWithPath: repo.path)) }
+            }
+            return true
+        case .moved(let url):
+            let renamed = url.lastPathComponent != URL(fileURLWithPath: repo.path).lastPathComponent
+            adopt(id, folder: url, message: String(localized: "\(repo.displayName) 已移动到 \(url.path)，继续同步"))
+            if renamed { Task { await renameRemoteToMatchFolder(id) } }
+            return true
+        case .inTrash(let url):
+            runtime[id, default: RepoRuntime()].trashedURL = url
+            return false
+        case .missing:
+            runtime[id]?.trashedURL = nil
+            return false
+        }
+    }
+
+    /// Points the repository at `folder`, keeping its settings, status and history.
+    private func adopt(_ id: UUID, folder: URL, message: String) {
+        guard let repo = repository(id) else { return }
+        let oldName = URL(fileURLWithPath: repo.path).lastPathComponent
+        update(id) {
+            $0.path = folder.path
+            $0.bookmark = RepositoryLocator.bookmark(for: folder)
+            if $0.displayName == oldName { $0.displayName = folder.lastPathComponent }
+            if $0.lastFailure?.kind == .folderMissing {
+                $0.lastFailure = nil
+                $0.lastStatus = .notSynced
+                $0.lastMessage = nil
+            }
+        }
+        runtime[id]?.trashedURL = nil
+        runtime[id]?.candidates = []
+        log(id, String(localized: "文件夹位置"), .info, message)
+        Task { await refreshUsage(id, force: true) }
+    }
+
+    /// After the folder was renamed, gives the GitHub repository the same name (in pinyin and with
+    /// dashes where GitHub needs it), then points `origin` at the new URL.
+    func renameRemoteToMatchFolder(_ id: UUID) async {
+        guard settings.renameRemoteWithFolder, let git = gitEnvironment else { return }
+        // Don't change the remote under a running sync.
+        while runtime[id]?.isSyncing == true { try? await Task.sleep(for: .seconds(1)) }
+        guard let repo = repository(id),
+              let remote = runtime[id]?.info?.remoteURL ?? repo.knownRemote,
+              let target = RepositoryRemoval.gitHubFullName(fromRemote: remote) else { return }
+        let newName = RepositoryNaming.suggestedName(for: URL(fileURLWithPath: repo.path).lastPathComponent)
+        guard !newName.isEmpty, newName.lowercased() != target.name.lowercased() else { return }
+        guard let credential = await auth.credentialForGit() else {
+            log(id, String(localized: "仓库改名"), .warning, String(localized: "未登录 GitHub，GitHub 上的仓库名保持为 \(target.name)"))
+            return
+        }
+        do {
+            let renamed = try await GitHubAPI.renameRepository(token: credential.token, owner: target.owner,
+                                                               name: target.name, to: newName)
+            try await pointOrigin(id, at: renamed.cloneURL, git: git)
+            log(id, String(localized: "仓库改名"), .success,
+                String(localized: "GitHub 仓库已跟随文件夹改名：\(target.name) → \(newName)"), detail: renamed.htmlURL.absoluteString)
+        } catch GitHubAPIError.nameTaken {
+            log(id, String(localized: "仓库改名"), .warning,
+                String(localized: "GitHub 上已有名为 \(newName) 的仓库，仓库名保持为 \(target.name)"))
+        } catch {
+            log(id, String(localized: "仓库改名"), .warning,
+                String(localized: "GitHub 仓库没能跟着改名，仓库名保持为 \(target.name)"),
+                detail: (error as? SyncFailure)?.fullReport ?? error.localizedDescription)
+        }
+    }
+
+    /// Repositories whose GitHub name was already checked this launch.
+    @ObservationIgnored private var checkedRemoteNames: Set<UUID> = []
+
+    /// When the repository was renamed on GitHub (for example by this folder's other Mac), updates
+    /// `origin` to the new name. Checked once per launch, after a successful sync.
+    func followRemoteRename(_ id: UUID) async {
+        guard checkedRemoteNames.insert(id).inserted, let git = gitEnvironment,
+              let remote = runtime[id]?.info?.remoteURL,
+              let target = RepositoryRemoval.gitHubFullName(fromRemote: remote),
+              let credential = await auth.credentialForGit(),
+              let current = try? await GitHubAPI.repository(token: credential.token, owner: target.owner, name: target.name),
+              current.fullName.lowercased() != "\(target.owner)/\(target.name)".lowercased() else { return }
+        do {
+            try await pointOrigin(id, at: current.cloneURL, git: git)
+            log(id, String(localized: "仓库改名"), .info, String(localized: "GitHub 仓库已改名为 \(current.fullName)，已更新远程地址"))
+        } catch {
+            log(id, String(localized: "仓库改名"), .warning, String(localized: "无法更新远程地址"),
+                detail: (error as? SyncFailure)?.fullReport ?? error.localizedDescription)
+        }
+    }
+
+    private func pointOrigin(_ id: UUID, at url: String, git: GitEnvironment) async throws {
+        guard let repo = repository(id) else { return }
+        let client = GitClient(repositoryURL: URL(fileURLWithPath: repo.path), git: git)
+        let result = try await client.run(["remote", "set-url", "origin", url], timeout: 30)
+        guard result.succeeded else {
+            throw SyncFailure.from(result, stage: .preflight, command: "git remote set-url origin \(url)")
+        }
+        update(id) { $0.knownRemote = url }
+        await refreshInfo(id)
+    }
+
+    /// Looks for the missing folder by name with Spotlight and keeps the ones that are this repository.
+    func findCandidates(_ id: UUID) async {
+        guard let repo = repository(id), let git = gitEnvironment, runtime[id]?.searchingCandidates != true else { return }
+        runtime[id, default: RepoRuntime()].searchingCandidates = true
+        defer { runtime[id]?.searchingCandidates = false }
+        let expected = RepositoryIdentity(remote: repo.knownRemote, commit: repo.knownCommit)
+        let found = await RepositoryLocator(git: git).candidates(named: URL(fileURLWithPath: repo.path).lastPathComponent,
+                                                                  expected: expected)
+        let taken = Set(repositories.map { RepositoryCreator.canonicalPath($0.path) })
+        runtime[id]?.candidates = found.filter { !taken.contains(RepositoryCreator.canonicalPath($0.path)) }
+    }
+
+    /// Uses `folder` as the repository's new location after checking it is the same repository.
+    /// Returns an error message, or nil on success.
+    func relocate(_ id: UUID, to folder: URL) async -> String? {
+        guard let repo = repository(id), let git = gitEnvironment else { return gitProblem }
+        let path = RepositoryCreator.canonicalPath(folder.path)
+        if let other = repositories.first(where: { $0.id != id && RepositoryCreator.canonicalPath($0.path) == path }) {
+            return String(localized: "「\(folder.lastPathComponent)」已经是列表中的「\(other.displayName)」。")
+        }
+        let expected = RepositoryIdentity(remote: repo.knownRemote, commit: repo.knownCommit)
+        guard await RepositoryLocator(git: git).matches(folder, expected: expected) else {
+            return String(localized: "「\(folder.lastPathComponent)」不是「\(repo.displayName)」这个仓库：远程地址和提交记录都对不上。")
+        }
+        adopt(id, folder: folder, message: String(localized: "\(repo.displayName) 已重新定位到 \(folder.path)"))
+        await refreshInfo(id)
+        return nil
+    }
+
+    /// Moves a trashed repository folder back to where it was.
+    func putBackFromTrash(_ id: UUID) async {
+        guard let repo = repository(id), let trashed = runtime[id]?.trashedURL else { return }
+        let original = URL(fileURLWithPath: repo.path)
+        do {
+            if FileManager.default.fileExists(atPath: original.path) {
+                throw CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: original.path])
+            }
+            try FileManager.default.createDirectory(at: original.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try FileManager.default.moveItem(at: trashed, to: original)
+            adopt(id, folder: original, message: String(localized: "已将 \(repo.displayName) 从废纸篓放回 \(original.path)"))
+            await refreshInfo(id)
+        } catch {
+            alert = AppAlert(title: String(localized: "无法放回原处"), message: error.localizedDescription)
+        }
     }
 
     func refreshAllInfo() async {
@@ -508,7 +703,9 @@ final class AppModel {
 
     /// Measures the folder and its history, at most every 10 minutes unless forced. Warns when the
     /// history passes GitHub's recommended size (once per level per launch).
-    func refreshUsage(_ id: UUID, force: Bool = false) async {
+    /// `filesChanged: false` (a sync that changed nothing on disk) keeps the known file size and only
+    /// re-reads the history size, which is cheap.
+    func refreshUsage(_ id: UUID, force: Bool = false, filesChanged: Bool = true) async {
         guard let repo = repository(id), let git = gitEnvironment else { return }
         if !force, let last = runtime[id]?.usage?.measuredAt, Date().timeIntervalSince(last) < 600 { return }
         guard runtime[id]?.measuringUsage != true else { return }
@@ -517,7 +714,8 @@ final class AppModel {
 
         let previous = runtime[id]?.usage?.level
         let scanner = RepositoryUsageScanner(client: GitClient(repositoryURL: URL(fileURLWithPath: repo.path), git: git))
-        guard let usage = try? await scanner.measure() else { return }
+        let knownFiles = filesChanged ? nil : runtime[id]?.usage?.fileBytes
+        guard let usage = try? await scanner.measure(reusingFileBytes: knownFiles) else { return }
         runtime[id]?.usage = usage
 
         guard usage.level != .normal, usage.level != previous, previous != .veryLarge else { return }
@@ -597,7 +795,19 @@ final class AppModel {
     }
 
     func sync(_ id: UUID, trigger: SyncTrigger) {
-        guard !isShuttingDown, let repo = repository(id) else { return }
+        guard !isShuttingDown, repository(id) != nil else { return }
+        if runtime[id]?.isSyncing != true, !followFolder(id), let missing = repository(id) {
+            let inTrash = runtime[id]?.trashedURL != nil
+            let failure = SyncFailure(
+                kind: .folderMissing, stage: .inspect,
+                message: inTrash ? String(localized: "文件夹在废纸篓中：\(missing.displayName)")
+                                 : String(localized: "本地文件夹不存在或已被移动：\(missing.path)")
+            )
+            finish(id: id, report: nil, failure: failure, trigger: trigger)
+            if !inTrash { Task { await findCandidates(id) } }
+            return
+        }
+        guard let repo = repository(id) else { return }
         if runtime[id]?.isSyncing == true {
             if trigger.isManual {
                 log(id, String(localized: "同步"), .info, String(localized: "\(repo.displayName) 正在同步中，已忽略重复请求"))
@@ -785,7 +995,11 @@ final class AppModel {
         let outcome: SyncReport.Outcome = report?.outcome ?? .failure(failure ?? SyncFailure(kind: .unknown, stage: .preflight))
         switch outcome {
         case .success(let summary):
-            Task { await refreshUsage(id) }
+            let filesChanged = summary.committedFiles > 0 || summary.downloadedCommits > 0 || summary.restoredFiles > 0
+            Task {
+                await refreshUsage(id, filesChanged: filesChanged)
+                await followRemoteRename(id)
+            }
             update(id) {
                 $0.lastStatus = .success
                 $0.lastSyncAt = now
@@ -801,6 +1015,7 @@ final class AppModel {
                 notifications.post(title: String(localized: "\(repo.displayName) 已同步"), body: summary.text, identifier: "sync-\(id)")
             }
         case .noChanges:
+            Task { await followRemoteRename(id) }
             update(id) {
                 $0.lastStatus = .noChanges
                 $0.lastSyncAt = now
@@ -957,12 +1172,13 @@ final class AppModel {
         return count > 0 ? String(localized: "\(count) 个仓库自动同步中") : String(localized: "自动同步已全部关闭")
     }
 
-    var menuBarSymbol: String {
-        if syncingCount > 0 { return "arrow.triangle.2.circlepath.icloud" }
+    /// The symbol in the badge of the menu bar icon (the cat from the app icon plus this badge).
+    var menuBarBadge: String {
+        if syncingCount > 0 { return "ellipsis" }
         if repositories.contains(where: { $0.lastStatus == .conflict || $0.lastStatus == .needsAuth || $0.lastStatus == .failed }) {
-            return "exclamationmark.icloud"
+            return "exclamationmark"
         }
-        if !isOnline { return "icloud.slash" }
-        return autoSyncCount > 0 ? "checkmark.icloud" : "icloud"
+        if !isOnline { return "wifi.slash" }
+        return autoSyncCount > 0 ? "arrow.triangle.2.circlepath" : "pause.fill"
     }
 }

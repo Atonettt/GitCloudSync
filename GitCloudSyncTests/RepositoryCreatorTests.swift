@@ -30,8 +30,10 @@ final class RepositoryCreatorTests: XCTestCase {
     func testSuggestedNames() {
         XCTAssertEqual(RepositoryNaming.suggestedName(for: "research-notes"), "research-notes")
         XCTAssertEqual(RepositoryNaming.suggestedName(for: "My Thesis 2026"), "My-Thesis-2026")
-        XCTAssertEqual(RepositoryNaming.suggestedName(for: "论文 draft v2"), "draft-v2")
-        XCTAssertEqual(RepositoryNaming.suggestedName(for: "研究资料"), "")
+        XCTAssertEqual(RepositoryNaming.suggestedName(for: "论文 draft v2"), "lun-wen-draft-v2")
+        XCTAssertEqual(RepositoryNaming.suggestedName(for: "研究资料"), "yan-jiu-zi-liao")
+        XCTAssertEqual(RepositoryNaming.suggestedName(for: "Café notes"), "Cafe-notes")
+        XCTAssertEqual(RepositoryNaming.suggestedName(for: "★"), "")
         XCTAssertEqual(RepositoryNaming.suggestedName(for: "notes.git"), "notes")
         XCTAssertEqual(RepositoryNaming.suggestedName(for: String(repeating: "a", count: 150)).count, 100)
     }
