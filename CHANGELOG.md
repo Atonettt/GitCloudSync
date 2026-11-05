@@ -2,6 +2,11 @@
 
 All notable changes to GitSync are documented here.
 
+## [Unreleased]
+
+### Fixed
+- A folder linked while its GitHub repository was still empty now downloads content pushed there later, even when it is on a branch other than `main` (GitSync follows GitHub's default branch). Local files with the same names are never overwritten.
+
 ## [1.2.0] - 2026-11-04
 
 ### Added

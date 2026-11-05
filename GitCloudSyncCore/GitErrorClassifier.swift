@@ -102,7 +102,7 @@ public enum GitErrorClassifier {
         case .detachedHead:
             String(localized: "请在 GitHub Desktop 中切换回一个分支（例如 main）后再同步。")
         case .unbornWithRemote:
-            String(localized: "请在 GitHub Desktop 中先拉取（Pull）远程内容，再使用自动同步。")
+            String(localized: "GitHub 上已有内容，但本地文件夹里有同名文件，GitSync 不会覆盖它们。请把这些文件移到别处，再点「立即同步」。")
         case .operationInProgress:
             String(localized: "请在 GitHub Desktop 或终端中完成或中止该操作；也可以在「更多」菜单中选择中止（需要确认）。GitSync 不会自动清理。")
         case .indexLocked:

@@ -64,6 +64,63 @@ final class SyncEngineTests: XCTestCase {
         XCTAssertEqual(report.status, .noChanges)
     }
 
+    /// An empty folder linked to a GitHub repository that later got content on another branch
+    /// (e.g. pushed by a web tool): the content is downloaded and the branch is followed.
+    func testEmptyRepositoryAdoptsGitHubDefaultBranch() async throws {
+        let local = try await makeEmptyLocalWithRemoteBranch("feature", files: ["a.txt": "from GitHub\n"])
+        try sandbox.write("mine\n", to: "mine.txt", in: local)
+
+        let report = await sandbox.engine(for: local).sync()
+
+        XCTAssertEqual(report.summary?.downloadedCommits, 1, report.debugText)
+        XCTAssertEqual(report.summary?.committedFiles, 1)
+        XCTAssertEqual(report.info?.branch, "feature")
+        XCTAssertEqual(report.info?.upstream, "origin/feature")
+        XCTAssertEqual(sandbox.read("a.txt", in: local), "from GitHub\n")
+        let remote = try await sandbox.run(["ls-tree", "-r", "--name-only", "feature"], in: sandbox.bare).stdout
+        XCTAssertEqual(Set(remote.split(separator: "\n").map(String.init)), ["a.txt", "mine.txt"])
+
+        let again = await sandbox.engine(for: local).sync()
+        XCTAssertTrue(again.isNoChanges, again.debugText)
+    }
+
+    func testEmptyRepositoryDownloadsSameNamedBranch() async throws {
+        let local = try await makeEmptyLocalWithRemoteBranch("main", files: ["a.txt": "a\n"])
+        let report = await sandbox.engine(for: local).sync()
+        XCTAssertEqual(report.summary?.downloadedCommits, 1, report.debugText)
+        XCTAssertEqual(report.info?.upstream, "origin/main")
+        XCTAssertEqual(sandbox.read("a.txt", in: local), "a\n")
+    }
+
+    func testEmptyRepositoryNeverOverwritesClashingLocalFile() async throws {
+        let local = try await makeEmptyLocalWithRemoteBranch("feature", files: ["a.txt": "from GitHub\n"])
+        try sandbox.write("local version\n", to: "a.txt", in: local)
+
+        let report = await sandbox.engine(for: local).sync()
+
+        XCTAssertEqual(report.failure?.kind, .unbornWithRemote, report.debugText)
+        XCTAssertEqual(sandbox.read("a.txt", in: local), "local version\n")
+    }
+
+    /// GitHub has `files` on `branch` (its default); the local folder is a fresh `git init -b main`
+    /// pointing at it, like a folder GitSync linked while the repository was still empty.
+    private func makeEmptyLocalWithRemoteBranch(_ branch: String, files: [String: String]) async throws -> URL {
+        try await sandbox.createEmptyRemote()
+        let seed = try await sandbox.clone("seed")
+        for (name, content) in files { try sandbox.write(content, to: name, in: seed) }
+        try await sandbox.run(["add", "-A"], in: seed)
+        try await sandbox.run(["commit", "-qm", "work"], in: seed)
+        try await sandbox.run(["push", "-q", "origin", "HEAD:\(branch)"], in: seed)
+        try await sandbox.run(["symbolic-ref", "HEAD", "refs/heads/\(branch)"], in: sandbox.bare)
+
+        let local = sandbox.root.appendingPathComponent("local")
+        try FileManager.default.createDirectory(at: local, withIntermediateDirectories: true)
+        try await sandbox.run(["init", "-q", "-b", "main"], in: local)
+        try await sandbox.configure(local)
+        try await sandbox.run(["remote", "add", "origin", sandbox.bare.path], in: local)
+        return local
+    }
+
     func testNonConflictingChangesOnBothSidesAreMerged() async throws {
         try await sandbox.createRemote(seedFiles: ["a.txt": "a\n", "b.txt": "b\n"])
         let mac = try await sandbox.clone("mac")

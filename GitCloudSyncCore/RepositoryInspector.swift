@@ -171,6 +171,27 @@ public struct RepositoryInspector: Sendable {
         return nil
     }
 
+    /// The branch GitHub shows by default ("origin/main" style): the fetched remote HEAD, else
+    /// main or master, else the remote's only branch. Nil when there is nothing to choose.
+    public func remoteDefaultBranch() async throws -> String? {
+        let head = try await git(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])
+        if head.succeeded {
+            let name = head.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            if try await git(["rev-parse", "--verify", "--quiet", "refs/remotes/\(name)"]).succeeded {
+                return name
+            }
+        }
+        let refs = try await git(["for-each-ref", "--format=%(refname)", "refs/remotes/origin/"])
+        guard refs.succeeded else { return nil }
+        let names = refs.stdout.split(separator: "\n")
+            .map { String($0.dropFirst("refs/remotes/".count)) }
+            .filter { $0 != "origin/HEAD" }
+        for preferred in ["origin/main", "origin/master"] where names.contains(preferred) {
+            return preferred
+        }
+        return names.count == 1 ? names[0] : nil
+    }
+
     public func aheadBehind(upstream: String) async throws -> (ahead: Int, behind: Int) {
         let result = try await git(["rev-list", "--left-right", "--count", "HEAD...\(upstream)"])
         guard result.succeeded else { return (0, 0) }

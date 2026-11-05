@@ -9839,18 +9839,18 @@
         }
       }
     },
-    "请在 GitHub Desktop 中先拉取（Pull）远程内容，再使用自动同步。": {
+    "GitHub 上已有内容，但本地文件夹里有同名文件，GitSync 不会覆盖它们。请把这些文件移到别处，再点「立即同步」。": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pull the remote content in GitHub Desktop first, then use auto sync."
+            "value": "GitHub already has content, but the local folder has files with the same names, and GitSync won't overwrite them. Move those files elsewhere, then click Sync Now."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请在 GitHub Desktop 中先拉取（Pull）远程内容，再使用自动同步。"
+            "value": "GitHub 上已有内容，但本地文件夹里有同名文件，GitSync 不会覆盖它们。请把这些文件移到别处，再点「立即同步」。"
           }
         }
       }

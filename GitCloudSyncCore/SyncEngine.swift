@@ -186,22 +186,34 @@ public struct SyncEngine: Sendable {
     ) async throws -> SyncReport.Outcome {
         progress(.checking)
         let info = try await preflight()
-        guard let branch = info.branch else {
+        guard var branch = info.branch else {
             throw SyncFailure(kind: .detachedHead, stage: .preflight)
         }
 
         progress(.downloading)
         try await fetch(session: session)
 
-        let upstream = try await inspector.resolveUpstream(branch: branch)
-        if info.isUnborn, upstream != nil {
-            throw SyncFailure(kind: .unbornWithRemote, stage: .preflight)
+        var upstream = try await inspector.resolveUpstream(branch: branch)
+        var adopted = 0
+        if info.isUnborn {
+            // Nothing committed here yet, but GitHub may already have content, possibly on a
+            // branch with another name (whatever GitHub shows by default). Start from that.
+            if upstream == nil {
+                _ = try await git(["remote", "set-head", "origin", "--auto"], stage: .fetch, session: session,
+                                  timeout: options.networkTimeout)
+                upstream = try await inspector.remoteDefaultBranch()
+            }
+            if let target = upstream {
+                progress(.merging)
+                (branch, adopted) = try await adoptRemoteBranch(target, session: session)
+            }
         }
 
         progress(.committing)
         let committed = try await commitLocalChanges(session: session)
 
-        let (downloaded, uploaded) = try await integrateAndPush(branch: branch, upstream: upstream, session: session, progress: progress)
+        var (downloaded, uploaded) = try await integrateAndPush(branch: branch, upstream: upstream, session: session, progress: progress)
+        downloaded += adopted
 
         if committed == 0, downloaded == 0, uploaded == 0 {
             return .noChanges
@@ -550,6 +562,21 @@ public struct SyncEngine: Sendable {
         _ = try await gitChecked(["commit", "--quiet", "-m", message], stage: .commit, session: session,
                                  timeout: options.localTimeout, extraConfig: try await identityConfig())
         return files.count
+    }
+
+    /// Checks out GitHub's branch in a repository without commits. Git refuses to overwrite
+    /// local files, so nothing on disk is lost: files that clash stop the sync with an
+    /// explanation, and other local files stay as changes to be committed on top.
+    private func adoptRemoteBranch(_ upstream: String, session: SyncSession) async throws -> (branch: String, downloaded: Int) {
+        let (_, remoteBranch) = Self.split(upstream: upstream)
+        let args = ["checkout", "--quiet", "-B", remoteBranch, "--track", upstream]
+        let result = try await git(args, stage: .merge, session: session, timeout: options.localTimeout)
+        guard result.succeeded else {
+            throw SyncFailure(kind: .unbornWithRemote, stage: .merge, command: "git " + args.joined(separator: " "),
+                              exitCode: result.exitCode, stderr: result.stderr)
+        }
+        let count = try await git(["rev-list", "--count", "HEAD"], stage: .merge, session: session)
+        return (remoteBranch, Int(count.stdout.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0)
     }
 
     private func merge(upstream: String, localAhead: Int, session: SyncSession) async throws {
