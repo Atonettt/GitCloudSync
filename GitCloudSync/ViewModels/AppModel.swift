@@ -21,7 +21,7 @@ struct RepoRuntime {
 }
 
 enum SyncTrigger: String {
-    case manualSingle, manualAll, scheduled, startup, wake, networkRestored, conflictResolution, restore, enabled, officeActivated
+    case manualSingle, manualAll, scheduled, startup, wake, networkRestored, conflictResolution, restore, enabled
 
     var isManual: Bool { self == .manualSingle || self == .manualAll || self == .conflictResolution || self == .restore }
 
@@ -35,7 +35,6 @@ enum SyncTrigger: String {
         case .conflictResolution: String(localized: "解决冲突")
         case .restore: String(localized: "恢复历史版本")
         case .enabled: String(localized: "开启自动同步")
-        case .officeActivated: String(localized: "切换到 Office 时同步")
         }
     }
 }
@@ -165,12 +164,6 @@ final class AppModel {
             Task { @MainActor in
                 for repo in AppModel.shared.repositories { AppModel.shared.followFolder(repo.id) }
             }
-        }
-        center.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { note in
-            let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            guard let bundleID = app?.bundleIdentifier,
-                  OfficeDocuments.apps.contains(where: { $0.bundleID == bundleID }) else { return }
-            Task { @MainActor in AppModel.shared.checkGitHubOnOfficeSwitch() }
         }
         center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { _ in
             Task { @MainActor in AppModel.shared.log(nil, String(localized: "系统"), .info, String(localized: "系统即将休眠")) }
@@ -711,31 +704,6 @@ final class AppModel {
             let message = (error as? SyncFailure)?.message ?? error.localizedDescription
             log(id, String(localized: "重新下载"), .error, message)
             alert = AppAlert(title: String(localized: "无法重新下载"), message: message)
-        }
-    }
-
-    // MARK: - Checking GitHub when switching to Office
-
-    @ObservationIgnored private var lastOfficeSwitchCheck: Date?
-
-    /// Switching to Word, Excel or PowerPoint asks GitHub right away whether anything changed, so a
-    /// document edited in the cloud is downloaded (and reopened) without waiting for the next sync.
-    /// The question is one small request per repository; a real sync only runs when there is news.
-    func checkGitHubOnOfficeSwitch() {
-        guard !isShuttingDown, isOnline, let git = gitEnvironment else { return }
-        if let last = lastOfficeSwitchCheck, Date().timeIntervalSince(last) < 10 { return }
-        lastOfficeSwitchCheck = Date()
-        for repo in repositories where repo.autoSyncEnabled && !repo.pausedForConflict {
-            guard runtime[repo.id]?.isSyncing != true, runtime[repo.id]?.info?.remoteURL != nil else { continue }
-            let id = repo.id
-            let folder = URL(fileURLWithPath: repo.path)
-            Task {
-                let credential = await auth.credentialForGit()
-                let inspector = RepositoryInspector(client: GitClient(repositoryURL: folder, git: git, credential: credential))
-                if await inspector.remoteHasNewCommits() {
-                    sync(id, trigger: .officeActivated)
-                }
-            }
         }
     }
 

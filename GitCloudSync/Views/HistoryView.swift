@@ -246,6 +246,9 @@ private struct FilePreviewPane: View {
     @State private var url: URL?
     @State private var loading = false
     @State private var failure: String?
+    /// Show what changed against the version before, instead of the file itself.
+    @AppStorage("history.compare") private var comparing = false
+    @State private var previous: (url: URL?, date: Date?)?
 
     var body: some View {
         Group {
@@ -254,7 +257,15 @@ private struct FilePreviewPane: View {
                     header(target)
                     Divider()
                     ZStack {
-                        if let url {
+                        if comparing, let url {
+                            if let previous {
+                                VersionComparisonView(old: previous.url, new: url,
+                                                      kind: (target.path as NSString).pathExtension,
+                                                      caption: previousCaption(previous.date))
+                            } else {
+                                ProgressView()
+                            }
+                        } else if let url {
                             QuickLookView(url: url)
                         } else if loading {
                             ProgressView()
@@ -270,6 +281,29 @@ private struct FilePreviewPane: View {
             }
         }
         .task(id: target?.id) { await load(target) }
+        .task(id: "\(target?.id ?? "")|\(comparing)") { await loadPrevious(target) }
+    }
+
+    private func previousCaption(_ date: Date?) -> String {
+        guard let date else { return String(localized: "这是最早的时间节点，之前没有版本") }
+        return String(localized: "与上一个时间节点（\(date.formatted(date: .abbreviated, time: .shortened))）相比")
+    }
+
+    private func loadPrevious(_ target: PreviewTarget?) async {
+        previous = nil
+        guard comparing, let target, let browser = model.historyBrowser(repoID) else { return }
+        do {
+            // Always the sync point right before this one, even if this file didn't change in it.
+            if let point = try await browser.previousSyncPoint(before: target.commit, path: target.path) {
+                let file = point.hasFile
+                    ? try await browser.exportForPreview(path: target.path, commit: point.commit, date: point.date) : nil
+                previous = (file, point.date)
+            } else {
+                previous = (nil, nil)
+            }
+        } catch {
+            previous = (nil, nil)
+        }
     }
 
     private func header(_ target: PreviewTarget) -> some View {
@@ -280,6 +314,14 @@ private struct FilePreviewPane: View {
                 Text(target.subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
             }
             Spacer(minLength: 8)
+            Picker("显示", selection: $comparing) {
+                Text("预览").tag(false)
+                Text("对比上一版本").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .help("对比上一版本：标出这个版本相对上一个版本改了哪些地方")
             Button {
                 if let url { actions.openInQuickLook(url) }
             } label: {

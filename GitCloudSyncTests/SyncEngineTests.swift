@@ -189,24 +189,6 @@ final class SyncEngineTests: XCTestCase {
         XCTAssertEqual(again.downloadedFiles, [])
     }
 
-    func testRemoteHasNewCommitsDetectsPushesWithoutFetching() async throws {
-        try await sandbox.createRemote()
-        let mac = try await sandbox.clone("mac")
-        let other = try await sandbox.clone("other")
-        let inspector = RepositoryInspector(client: GitClient(repositoryURL: mac, git: sandbox.git))
-
-        let before = await inspector.remoteHasNewCommits()
-        XCTAssertFalse(before)
-        try await sandbox.commitAndPush(["a.txt": "from the cloud\n"], in: other)
-        let after = await inspector.remoteHasNewCommits()
-        XCTAssertTrue(after)
-        XCTAssertFalse(sandbox.exists("a.txt", in: mac), "the check downloads nothing")
-
-        _ = await sandbox.engine(for: mac).sync()
-        let synced = await inspector.remoteHasNewCommits()
-        XCTAssertFalse(synced)
-    }
-
     func testNonConflictingChangesOnBothSidesAreMerged() async throws {
         try await sandbox.createRemote(seedFiles: ["a.txt": "a\n", "b.txt": "b\n"])
         let mac = try await sandbox.clone("mac")

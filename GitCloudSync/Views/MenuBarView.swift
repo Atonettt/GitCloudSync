@@ -8,11 +8,11 @@ struct MenuBarView: View {
     var body: some View {
         let running = model.autoSyncCount > 0
         let total = model.repositories.count
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                AppIconView(size: 22)
+                AppIconView(size: 20)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("GitSync").font(.headline)
+                    Text("GitSync").font(.subheadline.weight(.semibold))
                     if running, let next = model.nextSyncDate {
                         Text("每 \(model.settings.intervalMinutes) 分钟 · 下次 \(next.formatted(date: .omitted, time: .shortened))")
                             .font(.caption).foregroundStyle(.secondary)
@@ -40,7 +40,6 @@ struct MenuBarView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .help("马上同步所有仓库，包括自动同步关闭的")
             .disabled(model.gitEnvironment == nil || total == 0)
 
@@ -54,14 +53,13 @@ struct MenuBarView: View {
                 // Many repositories: scroll inside a fixed height (a ScrollView has no height of its
                 // own in the menu bar panel).
                 ScrollView { repositoryRows }
-                    .frame(height: 260)
+                    .frame(height: 220)
             }
 
             Divider()
 
             HStack(spacing: 6) {
                 MenuTileButton(title: String(localized: "主窗口"), symbol: "macwindow") { show(WindowID.main) }
-                MenuTileButton(title: String(localized: "日志"), symbol: "list.bullet.rectangle") { show(WindowID.logs) }
                 MenuTileButton(title: String(localized: "设置"), symbol: "gearshape") {
                     NSApp.activate(ignoringOtherApps: true)
                     openSettings()
@@ -69,12 +67,12 @@ struct MenuBarView: View {
                 MenuTileButton(title: String(localized: "退出"), symbol: "power") { NSApp.terminate(nil) }
             }
         }
-        .padding(14)
-        .frame(width: 340)
+        .padding(12)
+        .frame(width: 290)
     }
 
     private var repositoryRows: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             ForEach(model.repositories) { repo in
                 let status = model.displayStatus(for: repo)
                 HStack(spacing: 8) {
@@ -116,13 +114,13 @@ private struct MenuTileButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: symbol).font(.system(size: 15, weight: .medium))
-                Text(title).font(.caption)
+            VStack(spacing: 3) {
+                Image(systemName: symbol).font(.system(size: 13, weight: .medium))
+                Text(title).font(.caption2)
             }
             .foregroundStyle(.primary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            .padding(.vertical, 6)
             .background(Color.primary.opacity(hovering ? 0.12 : 0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }

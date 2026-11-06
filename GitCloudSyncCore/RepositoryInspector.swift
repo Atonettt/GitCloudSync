@@ -192,23 +192,6 @@ public struct RepositoryInspector: Sendable {
         return names.count == 1 ? names[0] : nil
     }
 
-    /// True when GitHub has commits the last fetch didn't bring: one small `ls-remote` request, no
-    /// download. False when nothing changed, the branch has no upstream yet, or GitHub can't be reached.
-    public func remoteHasNewCommits(timeout: TimeInterval = 15) async -> Bool {
-        guard let branchResult = try? await git(["symbolic-ref", "--quiet", "--short", "HEAD"]), branchResult.succeeded,
-              let upstream = try? await resolveUpstream(branch: branchResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines))
-        else { return false }
-        let slash = upstream.firstIndex(of: "/") ?? upstream.endIndex
-        let remote = String(upstream[..<slash])
-        let remoteBranch = slash == upstream.endIndex ? upstream : String(upstream[upstream.index(after: slash)...])
-        guard let listed = try? await client.run(["ls-remote", remote, "refs/heads/\(remoteBranch)"], timeout: timeout),
-              listed.succeeded,
-              let remoteHead = listed.stdout.split(whereSeparator: { $0 == "\t" || $0 == "\n" }).first.map(String.init),
-              let local = try? await git(["rev-parse", "--verify", "--quiet", "refs/remotes/\(upstream)"]), local.succeeded
-        else { return false }
-        return remoteHead != local.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     public func aheadBehind(upstream: String) async throws -> (ahead: Int, behind: Int) {
         let result = try await git(["rev-list", "--left-right", "--count", "HEAD...\(upstream)"])
         guard result.succeeded else { return (0, 0) }

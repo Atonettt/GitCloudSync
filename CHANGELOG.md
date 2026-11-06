@@ -2,14 +2,14 @@
 
 All notable changes to GitSync are documented here.
 
-## [Unreleased]
+## [1.3.0] - 2026-11-06
 
 ### Added
 - **Repositories on GitHub**: download any of your GitHub repositories to this Mac as a synced folder, open it on GitHub, or delete ones you no longer need, including ones with no folder here.
 - **Download again from GitHub**: when a synced folder was deleted, download it back to where it was (or somewhere else) and keep syncing.
 - **Revert to the GitHub version**: undo changes that aren't synced yet, for a file or a whole folder, from the pending-changes list or the file browser. The discarded content is kept in a local backup.
 - **Documents open in Word, Excel or PowerPoint are refreshed**: after a sync downloads a newer version, an unchanged open document is reopened with the new content; one with unsaved edits asks whether to keep both versions or use GitHub's.
-- **Switching to Word, Excel or PowerPoint checks GitHub right away**, so a document edited in the cloud is downloaded without waiting for the next sync.
+- **Compare changes**: next to the preview, see what changed since the previous sync point, in the main window and in version history. Word, PDF and text files show added, removed and edited paragraphs with the changed words marked; Excel lists the changed cells; images are shown side by side. Files changed at the last sync are marked Modified or New in the file list.
 - Each repository in the sidebar shows whether Auto Sync is on, and one click turns it on or off. New filters: Auto Sync On and Paused.
 
 ### Changed
@@ -18,6 +18,7 @@ All notable changes to GitSync are documented here.
 - A more compact repository page, an account card at the bottom of the sidebar, and a file list that updates by itself.
 - PDFs in the preview scroll through all pages and fit the width; previews refresh when a sync changes the file.
 - Deleting a repository no longer asks you to type its name.
+- A smaller menu bar panel.
 
 ### Fixed
 - A folder linked while its GitHub repository was still empty now downloads content pushed there later, even when it is on a branch other than `main` (GitSync follows GitHub's default branch). Local files with the same names are never overwritten.
@@ -65,6 +66,7 @@ All notable changes to GitSync are documented here.
 
 First release: automatic two-way sync of multiple folders with GitHub, safe conflict handling, GitHub sign-in via GitHub CLI, OAuth device flow, or personal access token, ignore rules for macOS and Office temporary files, menu bar operation, and sync logs.
 
+[1.3.0]: https://github.com/Atonettt/GitCloudSync/releases/tag/v1.3.0
 [1.2.0]: https://github.com/Atonettt/GitCloudSync/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Atonettt/GitCloudSync/releases/tag/v1.1.0
 [1.0]: https://github.com/Atonettt/GitCloudSync/releases/tag/v1.0

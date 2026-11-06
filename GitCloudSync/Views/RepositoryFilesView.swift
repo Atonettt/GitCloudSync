@@ -21,8 +21,22 @@ struct RepositoryFilesView: View {
     @State private var items: [Item] = []
     @State private var selection: Item.ID?
     @State private var unsynced: Set<String> = []
+    /// What the latest sync changed (path → "A" new / "M" modified) and when it ran.
+    @State private var recent: [String: Character] = [:]
+    @State private var recentDate: Date?
     @State private var loading = false
     @State private var revertTarget: Item?
+    /// Show what changed instead of the file: unsynced edits against the last synced version, or
+    /// for a synced file its latest change against the version before.
+    @AppStorage("files.compare") private var comparing = false
+    @State private var baseline: Baseline?
+
+    private struct Baseline {
+        let path: String
+        let modified: Date?
+        let url: URL?
+        let caption: String
+    }
 
     private var root: URL { URL(fileURLWithPath: repo.path) }
 
@@ -142,6 +156,10 @@ struct RepositoryFilesView: View {
                     .foregroundStyle(badge.color)
                     .padding(.horizontal, 5).padding(.vertical, 1)
                     .background(badge.color.opacity(0.12), in: Capsule())
+                    .help(badgeHelp(for: item))
+            } else if item.isDirectory, recent.keys.contains(where: { $0.hasPrefix(item.path + "/") }) {
+                Circle().fill(Color.blue).frame(width: 7, height: 7)
+                    .help(String(localized: "里面有文件在上一次同步时改动过"))
             }
             if !item.isDirectory, let size = item.size {
                 Text(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
@@ -159,7 +177,19 @@ struct RepositoryFilesView: View {
         if !item.isDirectory, let size = item.size, size > Int64(max(1, model.settings.largeFileLimitMB)) * 1024 * 1024 {
             return (String(localized: "超过上限"), .orange)
         }
-        return isPending(item) ? (String(localized: "未同步"), .orange) : nil
+        if isPending(item) { return (String(localized: "未同步"), .orange) }
+        guard !item.isDirectory else { return nil }
+        switch recent[item.path] {
+        case "A": return (String(localized: "新增"), .green)
+        case "M": return (String(localized: "已修改"), .blue)
+        default: return nil
+        }
+    }
+
+    private func badgeHelp(for item: Item) -> String {
+        guard !isPending(item), !item.isDirectory, recent[item.path] != nil else { return "" }
+        let when = recentDate?.formatted(date: .abbreviated, time: .shortened) ?? ""
+        return String(localized: "上一次同步（\(when)）时改动，切到「对比改动」可以看具体改了什么")
     }
 
     private func isPending(_ item: Item) -> Bool {
@@ -187,6 +217,16 @@ struct RepositoryFilesView: View {
                             .buttonStyle(.borderedProminent)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if comparing {
+                    if let baseline, baseline.path == item.path, baseline.modified == item.modified {
+                        VersionComparisonView(old: baseline.url, new: url(item),
+                                              kind: (item.name as NSString).pathExtension,
+                                              caption: baseline.caption)
+                            .id("\(item.id)|\(item.modified?.timeIntervalSince1970 ?? 0)")
+                    } else {
+                        ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .task(id: "\(item.id)|\(item.modified?.timeIntervalSince1970 ?? 0)") { await loadBaseline(item) }
+                    }
                 } else {
                     QuickLookView(url: url(item), revision: item.modified).id(item.id)
                 }
@@ -211,9 +251,47 @@ struct RepositoryFilesView: View {
                 Text(details(item)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 0)
+            if !item.isDirectory {
+                Picker("显示", selection: $comparing) {
+                    Text("预览").tag(false)
+                    Text("对比改动").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .help(isPending(item)
+                      ? String(localized: "对比改动：标出你还没同步的修改")
+                      : String(localized: "对比改动：标出这个文件和上一个时间节点相比改了哪些地方"))
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+
+    /// What the file is compared with. Unsynced: the version at the last sync (what GitHub has).
+    /// Synced: the version before its latest change.
+    private func loadBaseline(_ item: Item) async {
+        guard let browser = model.historyBrowser(repo.id) else { return }
+        func done(_ url: URL?, _ caption: String) {
+            baseline = Baseline(path: item.path, modified: item.modified, url: url, caption: caption)
+        }
+        if isPending(item) {
+            if let file = try? await browser.exportForPreview(path: item.path, commit: "HEAD", date: Date()) {
+                done(file, String(localized: "你还没同步的修改，与上次同步的版本（GitHub 上的版本）相比"))
+            } else {
+                done(nil, String(localized: "新文件，还没有同步过"))
+            }
+            return
+        }
+        // Synced: against the sync point before the last one, whether or not this file changed then.
+        guard let point = try? await browser.previousSyncPoint(before: "HEAD", path: item.path) else {
+            done(nil, String(localized: "这是最早的时间节点，之前没有版本"))
+            return
+        }
+        let when = point.date.formatted(date: .abbreviated, time: .shortened)
+        let file = point.hasFile
+            ? try? await browser.exportForPreview(path: item.path, commit: point.commit, date: point.date) : nil
+        done(file, String(localized: "与上一个时间节点（\(when)）相比"))
     }
 
     private func details(_ item: Item) -> String {
@@ -293,6 +371,11 @@ struct RepositoryFilesView: View {
             selection = items.first { !$0.isDirectory }?.id
         }
         unsynced = await model.unsyncedPaths(repo.id)
+        if let browser = model.historyBrowser(repo.id) {
+            let last = await browser.lastSyncChanges()
+            recent = last.changes
+            recentDate = last.date
+        }
     }
 }
 

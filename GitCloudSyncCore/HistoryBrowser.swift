@@ -239,6 +239,53 @@ public struct HistoryBrowser: Sendable {
         return result.stdoutData
     }
 
+    /// What the latest sync point changed compared with the one before: path → "A" (added) or
+    /// "M" (modified), plus that sync's time. Empty for the very first sync point.
+    public func lastSyncChanges() async -> (date: Date?, changes: [String: Character]) {
+        guard let head = try? await client.run(["log", "-n", "1", "--format=%ct", "HEAD"], timeout: timeout), head.succeeded,
+              let seconds = TimeInterval(head.stdout.trimmingCharacters(in: .whitespacesAndNewlines)) else { return (nil, [:]) }
+        let date = Date(timeIntervalSince1970: seconds)
+        guard let diff = try? await client.run(["diff", "--name-status", "--no-renames", "-z", "HEAD~1", "HEAD"], timeout: timeout),
+              diff.succeeded else { return (date, [:]) }
+        let fields = diff.stdoutData.split(separator: 0).map { String(decoding: $0, as: UTF8.self) }
+        var changes: [String: Character] = [:]
+        var index = 0
+        while index + 1 < fields.count {
+            let status = fields[index].first ?? "M"
+            switch status {
+            case "A": changes[fields[index + 1]] = "A"
+            case "M", "T": changes[fields[index + 1]] = "M"
+            default: break   // deletions have nothing to show in the list
+            }
+            index += 2
+        }
+        return (date, changes)
+    }
+
+    /// The sync point just before `commit` (its first parent) and whether `path` existed there.
+    /// Nil when `commit` is the very first one.
+    public func previousSyncPoint(before commit: String, path: String) async throws -> (commit: String, date: Date, hasFile: Bool)? {
+        let parent = try await client.run(["log", "-n", "1", "--format=%H%x1f%ct", "\(commit)~1"], timeout: timeout)
+        let fields = parent.stdout.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "\u{1f}")
+        guard parent.succeeded, fields.count == 2, let seconds = TimeInterval(fields[1]) else { return nil }
+        let exists = try await client.run(["cat-file", "-e", "\(fields[0]):\(path)"], timeout: timeout)
+        return (fields[0], Date(timeIntervalSince1970: seconds), exists.succeeded)
+    }
+
+    /// The version of `path` before the one in `commit`: the latest earlier commit that touched it.
+    /// Nil when `commit` is where the file first appeared.
+    public func previousVersion(of path: String, before commit: String) async throws -> (commit: String, date: Date)? {
+        let parent = try await client.run(["rev-parse", "--verify", "--quiet", "\(commit)~1"], timeout: timeout)
+        guard parent.succeeded else { return nil }
+        let result = try await git(["log", "-n", "1", "--first-parent", "--format=%H%x1f%ct", "\(commit)~1", "--", path])
+        let fields = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "\u{1f}")
+        guard fields.count == 2, let seconds = TimeInterval(fields[1]) else { return nil }
+        // The file may have been deleted in that commit; then there is no earlier content to show.
+        let exists = try await client.run(["cat-file", "-e", "\(fields[0]):\(path)"], timeout: timeout)
+        guard exists.succeeded else { return nil }
+        return (fields[0], Date(timeIntervalSince1970: seconds))
+    }
+
     /// Writes a version to a temporary folder (for Quick Look or comparing). The repository is untouched.
     /// `date` only labels the file name.
     public func exportForPreview(path: String, commit: String, date: Date) async throws -> URL {

@@ -33,7 +33,8 @@
 - **Disk usage at a glance** — see how much space files and history take, with a warning before a repository grows past GitHub's recommended size.
 - **Follows your folders** — move or rename a synced folder and GitSync keeps tracking it; if it really is gone, GitSync helps you find it.
 - **Browse and preview** — see the folder's files and preview Word, PDF, images and more right in the window, now or in any earlier version.
-- **Works with Office** — documents open in Word, Excel or PowerPoint refresh when a newer version arrives, and switching to them checks GitHub right away.
+- **See what changed** — compare a file with the previous sync point: changed paragraphs in Word, PDF and text, changed cells in Excel.
+- **Works with Office** — documents open in Word, Excel or PowerPoint refresh when a newer version arrives.
 - **Your GitHub in one place** — download any of your repositories to this Mac, or delete ones you no longer need.
 - **Built for many repositories** — a searchable, filterable sidebar you can reorder by dragging.
 - **Delete independently** — remove the repository on GitHub or the local folder (to the Trash) without touching the other.

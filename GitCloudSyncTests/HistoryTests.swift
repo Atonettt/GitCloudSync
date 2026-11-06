@@ -47,6 +47,53 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(String(decoding: oldest, as: UTF8.self), "v1")
     }
 
+    func testPreviousVersionOfAFile() async throws {
+        try await sandbox.createRemote()
+        let mac = try await sandbox.clone("mac")
+        try await syncVersions(["v1", "v2"], of: "a.txt", in: mac)
+        try await syncVersions(["other"], of: "b.txt", in: mac)
+        try await syncVersions(["v3"], of: "a.txt", in: mac)
+
+        let versions = try await browser(mac).versions(of: "a.txt")
+        let newest = versions[0].commit.id
+        let previous = try await browser(mac).previousVersion(of: "a.txt", before: newest)
+        XCTAssertEqual(previous?.commit, versions[1].commit.id, "skips commits that didn't touch the file")
+        let content = try await browser(mac).content(of: "a.txt", at: try XCTUnwrap(previous?.commit))
+        XCTAssertEqual(String(decoding: content, as: UTF8.self), "v2")
+
+        let first = try await browser(mac).previousVersion(of: "a.txt", before: versions[2].commit.id)
+        XCTAssertNil(first, "the first version has nothing before it")
+    }
+
+    func testLastSyncChanges() async throws {
+        try await sandbox.createRemote(seedFiles: ["a.txt": "a", "gone.txt": "x"])
+        let mac = try await sandbox.clone("mac")
+        try sandbox.write("a2", to: "a.txt", in: mac)
+        try sandbox.write("new", to: "docs/b.txt", in: mac)
+        try FileManager.default.removeItem(at: mac.appendingPathComponent("gone.txt"))
+        let report = await sandbox.engine(for: mac, options: options("Mac-A")).sync()
+        XCTAssertNotNil(report.summary, report.debugText)
+
+        let last = await browser(mac).lastSyncChanges()
+        XCTAssertNotNil(last.date)
+        XCTAssertEqual(last.changes, ["a.txt": "M", "docs/b.txt": "A"])
+    }
+
+    func testPreviousSyncPoint() async throws {
+        try await sandbox.createRemote()
+        let mac = try await sandbox.clone("mac")
+        try await syncVersions(["v1"], of: "a.txt", in: mac)
+        try await syncVersions(["other"], of: "b.txt", in: mac)
+
+        let head = try await sandbox.run(["rev-parse", "HEAD"], in: mac).stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        let point = try await browser(mac).previousSyncPoint(before: head, path: "a.txt")
+        XCTAssertEqual(point?.hasFile, true)
+        let content = try await browser(mac).content(of: "a.txt", at: try XCTUnwrap(point?.commit))
+        XCTAssertEqual(String(decoding: content, as: UTF8.self), "v1", "a.txt didn't change at the last sync")
+        let newFile = try await browser(mac).previousSyncPoint(before: head, path: "b.txt")
+        XCTAssertEqual(newFile?.hasFile, false, "b.txt was added in the last sync")
+    }
+
     func testFilesOfAnOlderVersion() async throws {
         try await sandbox.createRemote()
         let mac = try await sandbox.clone("mac")
