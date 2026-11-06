@@ -1,0 +1,29 @@
+name: Windows
+
+on:
+  push:
+    branches: [windows]
+    paths: ["Windows/**", ".github/workflows/windows.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: Windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Configure Git for the tests
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.com"
+          git config --global core.autocrlf false
+
+      - name: Test the sync core
+        run: dotnet test tests/GitSync.Core.Tests --logger "console;verbosity=normal"

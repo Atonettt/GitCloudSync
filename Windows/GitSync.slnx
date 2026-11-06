@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GitSync.Core/GitSync.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GitSync.Core.Tests/GitSync.Core.Tests.csproj" />
+  </Folder>
+</Solution>
