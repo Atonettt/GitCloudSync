@@ -49,8 +49,22 @@ jobs:
               Where-Object { $_.ProviderName -in ".NET Runtime", "Application Error" } | Select-Object -First 5 | ForEach-Object { $_.Message }
             exit 1
           }
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+          $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          $bitmap.Save("$PWD\artifacts\screenshot.png")
           Stop-Process -Id $p.Id -Force
+          $log = Join-Path $env:LOCALAPPDATA "GitSync\crash.log"
+          if (Test-Path $log) { Write-Host "crash.log:"; Get-Content $log }
           Write-Host "GitSync started and kept running."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshot
+          path: Windows/artifacts/screenshot.png
 
       - name: Build the installers
         shell: pwsh
