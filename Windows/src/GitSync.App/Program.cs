@@ -10,9 +10,23 @@ public static class Program
     /// <summary>Started at login: stay in the notification area without opening the window.</summary>
     public static bool StartedInBackground { get; private set; }
 
+    /// <summary>Unexpected errors go to %LOCALAPPDATA%\GitSync\crash.log, so a crash can be explained.</summary>
+    public static void WriteCrash(string where, Exception? error)
+    {
+        try
+        {
+            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitSync");
+            Directory.CreateDirectory(folder);
+            File.AppendAllText(Path.Combine(folder, "crash.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {where}\n{error}\n\n");
+        }
+        catch { /* nothing else to do */ }
+    }
+
     [STAThread]
     static int Main(string[] args)
     {
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => WriteCrash("AppDomain", e.ExceptionObject as Exception);
+        TaskScheduler.UnobservedTaskException += (_, e) => { WriteCrash("Task", e.Exception); e.SetObserved(); };
         WinRT.ComWrappersSupport.InitializeComWrappers();
         StartedInBackground = args.Contains("--background");
 

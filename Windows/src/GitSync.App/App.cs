@@ -22,6 +22,7 @@ public sealed class App : Application
         Current = this;
         UnhandledException += (_, e) =>
         {
+            Program.WriteCrash("XAML", e.Exception);
             Model?.Log(null, L.T("程序错误", "App error"), LogLevel.Error, e.Message, detail: e.Exception?.ToString());
             e.Handled = true;
         };
@@ -29,11 +30,26 @@ public sealed class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        Resources.MergedDictionaries.Add(new XamlControlsResources());
-        Model = new AppModel();
-        tray = new TrayIcon(Model);
-        if (!Program.StartedInBackground) ShowMainWindow();
-        _ = Model.StartAsync();
+        try
+        {
+            Resources.MergedDictionaries.Add(new XamlControlsResources());
+            Model = new AppModel();
+            try { tray = new TrayIcon(Model); }
+            catch (Exception error) { Program.WriteCrash("Tray icon", error); }
+            if (!Program.StartedInBackground) ShowMainWindow();
+            _ = StartModel();
+        }
+        catch (Exception error)
+        {
+            Program.WriteCrash("Launch", error);
+            throw;
+        }
+    }
+
+    async Task StartModel()
+    {
+        try { await Model.StartAsync(); }
+        catch (Exception error) { Program.WriteCrash("Start", error); }
     }
 
     public void ShowMainWindow()

@@ -40,7 +40,14 @@ jobs:
         run: |
           $p = Start-Process -FilePath publish\x64\GitSync.exe -PassThru
           Start-Sleep -Seconds 20
-          if ($p.HasExited) { Write-Error "GitSync exited with code $($p.ExitCode)"; exit 1 }
+          if ($p.HasExited) {
+            Write-Host "GitSync exited with code $($p.ExitCode)"
+            $log = Join-Path $env:LOCALAPPDATA "GitSync\crash.log"
+            if (Test-Path $log) { Get-Content $log }
+            Get-WinEvent -FilterHashtable @{ LogName = "Application"; StartTime = (Get-Date).AddMinutes(-5) } -ErrorAction SilentlyContinue |
+              Where-Object { $_.ProviderName -in ".NET Runtime", "Application Error" } | Select-Object -First 5 | ForEach-Object { $_.Message }
+            exit 1
+          }
           Stop-Process -Id $p.Id -Force
           Write-Host "GitSync started and kept running."
 
