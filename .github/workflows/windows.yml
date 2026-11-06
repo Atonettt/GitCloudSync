@@ -55,10 +55,9 @@ jobs:
       - name: Build the installers
         shell: pwsh
         run: |
-          $lang = "installer\ChineseSimplified.isl"
-          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile $lang
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (!(Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+          New-Item -ItemType Directory -Force artifacts | Out-Null
           foreach ($arch in "x64", "arm64") {
             $env:GITSYNC_ARCH = $arch
             & $iscc installer\GitSync.iss
