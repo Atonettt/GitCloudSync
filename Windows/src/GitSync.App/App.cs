@@ -10,7 +10,7 @@ namespace GitSync.App;
 /// The application: one model, a notification-area icon that keeps syncing when the window is
 /// closed, and the main window. The interface is built in C#, so there is no App.xaml.
 /// </summary>
-public sealed class App : Application
+public sealed partial class App : Application
 {
     public static new App? Current { get; private set; }
     public AppModel Model { get; private set; } = null!;
@@ -20,6 +20,9 @@ public sealed class App : Application
     public App()
     {
         Current = this;
+#if WINDOWS_XAML
+        InitializeComponent();   // App.xaml: WinUI's control styles and theme resources
+#endif
         UnhandledException += (_, e) =>
         {
             Program.WriteCrash("XAML", e.Exception);
@@ -32,7 +35,6 @@ public sealed class App : Application
     {
         try
         {
-            Resources.MergedDictionaries.Add(new XamlControlsResources());
             Model = new AppModel();
             try { tray = new TrayIcon(Model); }
             catch (Exception error) { Program.WriteCrash("Tray icon", error); }

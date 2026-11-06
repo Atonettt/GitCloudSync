@@ -25,6 +25,7 @@
     <!-- Unpackaged apps need this to build resources.pri (with WinUI's own theme resources merged in). -->
     <EnableMsixTooling Condition="'$(OS)' == 'Windows_NT'">true</EnableMsixTooling>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <DefineConstants Condition="'$(OS)' == 'Windows_NT'">$(DefineConstants);WINDOWS_XAML</DefineConstants>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\GitSync.ico</ApplicationIcon>
     <Version>1.0.0</Version>
