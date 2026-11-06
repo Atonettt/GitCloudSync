@@ -20,6 +20,8 @@
     <!-- The whole interface is built in C#; the XAML compiler only runs on Windows. -->
     <UseWinUI Condition="'$(OS)' == 'Windows_NT'">true</UseWinUI>
     <DisableXbfLineInfo>true</DisableXbfLineInfo>
+    <!-- MRT looks for resources.pri next to the exe; the project and assembly names differ. -->
+    <ProjectPriFileName>resources.pri</ProjectPriFileName>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\GitSync.ico</ApplicationIcon>

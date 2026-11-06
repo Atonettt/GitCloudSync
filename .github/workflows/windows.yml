@@ -38,6 +38,7 @@ jobs:
       - name: Start the app once (smoke test)
         shell: pwsh
         run: |
+          Get-ChildItem publish\x64\*.pri | Format-Table Name, Length
           $p = Start-Process -FilePath publish\x64\GitSync.exe -PassThru
           Start-Sleep -Seconds 20
           if ($p.HasExited) {
