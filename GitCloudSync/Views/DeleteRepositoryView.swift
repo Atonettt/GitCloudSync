@@ -12,12 +12,11 @@ struct DeleteRepositoryView: View {
     @State private var remoteCheck: DeletionCheck?
     @State private var remoteCheckError: String?
     @State private var checking = false
-    @State private var confirmation = ""
     @State private var working = false
     @State private var errorText: String?
     @State private var needsScope = false
 
-    private static let scopeCommand = "gh auth refresh -h github.com -s delete_repo"
+    static let scopeCommand = "gh auth refresh -h github.com -s delete_repo"
 
     init(repoID: UUID, deleteOnGitHub: Bool, deleteLocal: Bool) {
         self.repoID = repoID
@@ -77,13 +76,6 @@ struct DeleteRepositoryView: View {
                 .padding(4)
             }
 
-            if deleteOnGitHub, let fullName {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("请输入 \(fullName) 确认删除 GitHub 上的仓库：").font(.callout)
-                    TextField(fullName, text: $confirmation).textFieldStyle(.roundedBorder)
-                }
-            }
-
             if needsScope {
                 VStack(alignment: .leading, spacing: 6) {
                     Label("GitHub 拒绝了删除：当前登录的令牌没有删除仓库的权限（delete_repo）。", systemImage: "person.badge.key.fill")
@@ -119,7 +111,7 @@ struct DeleteRepositoryView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(.red)
                     .disabled(working || syncing || checking || (!deleteOnGitHub && !deleteLocal)
-                              || (deleteOnGitHub && (fullName == nil || confirmation.trimmingCharacters(in: .whitespaces) != fullName)))
+                              || (deleteOnGitHub && fullName == nil))
             }
         }
         .padding(20)

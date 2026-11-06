@@ -162,6 +162,40 @@ public struct RepositoryCreator: Sendable {
         return created
     }
 
+    /// Downloads the GitHub repository at `remoteURL` into `destination`, for a folder that was
+    /// deleted locally. `destination` must not exist yet or be an empty folder, so nothing local is
+    /// ever replaced. The clone goes to a hidden folder next to it first and is moved into place
+    /// only when complete. GitSync's ignore rules and commit identity are then applied as for a
+    /// new repository.
+    public func download(remoteURL: String, to destination: URL, credential: GitCredential?,
+                         identity: GitIdentity?, ignorePatterns: [String], timeout: TimeInterval = 3600) async throws {
+        let fm = FileManager.default
+        var isDirectory: ObjCBool = false
+        if fm.fileExists(atPath: destination.path, isDirectory: &isDirectory) {
+            let contents = isDirectory.boolValue
+                ? ((try? fm.contentsOfDirectory(atPath: destination.path)) ?? []).filter { $0 != ".DS_Store" }
+                : [destination.lastPathComponent]
+            guard contents.isEmpty else {
+                throw SyncFailure(kind: .unknown, stage: .fetch,
+                                  message: String(localized: "「\(destination.path)」已存在且不是空的，GitSync 不会覆盖它。"))
+            }
+        }
+        let parent = destination.deletingLastPathComponent()
+        try fm.createDirectory(at: parent, withIntermediateDirectories: true)
+        let staging = parent.appendingPathComponent(".\(destination.lastPathComponent).gitsync-download-\(UUID().uuidString.prefix(8))")
+        defer { try? fm.removeItem(at: staging) }
+
+        let client = GitClient(repositoryURL: parent, git: git, credential: credential)
+        let args = ["clone", "--quiet", remoteURL, staging.path]
+        let result = try await client.run(args, timeout: timeout)
+        guard result.succeeded else {
+            throw SyncFailure.from(result, stage: .fetch, command: "git clone \(remoteURL)")
+        }
+        if fm.fileExists(atPath: destination.path) { try fm.removeItem(at: destination) }
+        try fm.moveItem(at: staging, to: destination)
+        try await prepare(folder: destination, remoteURL: remoteURL, identity: identity, ignorePatterns: ignorePatterns)
+    }
+
     /// True when the remote has no branches yet, so linking to it cannot clash with local history.
     public func remoteIsEmpty(_ remoteURL: String, credential: GitCredential?, in folder: URL) async throws -> Bool {
         let client = GitClient(repositoryURL: folder, git: git, credential: credential)

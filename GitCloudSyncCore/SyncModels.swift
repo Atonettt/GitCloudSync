@@ -285,6 +285,8 @@ public struct SyncReport: Sendable {
     public var info: RepositoryInfo?
     public var startedAt: Date
     public var duration: TimeInterval
+    /// Files GitHub's version changed on disk during this run, relative to the repository.
+    public var downloadedFiles: [String] = []
 
     public var status: SyncStatus {
         switch outcome {

@@ -4,8 +4,25 @@ All notable changes to GitSync are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Repositories on GitHub**: download any of your GitHub repositories to this Mac as a synced folder, open it on GitHub, or delete ones you no longer need, including ones with no folder here.
+- **Download again from GitHub**: when a synced folder was deleted, download it back to where it was (or somewhere else) and keep syncing.
+- **Revert to the GitHub version**: undo changes that aren't synced yet, for a file or a whole folder, from the pending-changes list or the file browser. The discarded content is kept in a local backup.
+- **Documents open in Word, Excel or PowerPoint are refreshed**: after a sync downloads a newer version, an unchanged open document is reopened with the new content; one with unsaved edits asks whether to keep both versions or use GitHub's.
+- **Switching to Word, Excel or PowerPoint checks GitHub right away**, so a document edited in the cloud is downloaded without waiting for the next sync.
+- Each repository in the sidebar shows whether Auto Sync is on, and one click turns it on or off. New filters: Auto Sync On and Paused.
+
+### Changed
+- GitSync uses the macOS system proxy (for example Clash) when talking to GitHub, so syncing works wherever your browser does.
+- A simpler toolbar and menu bar: one Sync All button whose menu holds the sync interval, one Add Repository button for local folders and GitHub, and an Auto Sync switch in the menu bar.
+- A more compact repository page, an account card at the bottom of the sidebar, and a file list that updates by itself.
+- PDFs in the preview scroll through all pages and fit the width; previews refresh when a sync changes the file.
+- Deleting a repository no longer asks you to type its name.
+
 ### Fixed
 - A folder linked while its GitHub repository was still empty now downloads content pushed there later, even when it is on a branch other than `main` (GitSync follows GitHub's default branch). Local files with the same names are never overwritten.
+- GitSync could quit unexpectedly when a file preview closed before it finished loading.
+- Choosing a sync interval now shows the checkmark on the new value.
 
 ## [1.2.0] - 2026-11-04
 

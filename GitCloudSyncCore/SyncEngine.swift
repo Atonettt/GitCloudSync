@@ -48,6 +48,8 @@ struct ConflictDetected: Error {
 private final class SyncSession {
     var steps: [SyncStepRecord] = []
     var warnings: [String] = []
+    /// Files whose content changed on disk because GitHub's version was merged in.
+    var downloadedPaths: Set<String> = []
 
     func record(_ result: ProcessResult, stage: SyncStage, command: String) {
         var output = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -114,6 +116,19 @@ public struct SyncEngine: Sendable {
         }
     }
 
+    /// Puts `paths` (files or folders, relative to the repository) back to how they are on GitHub
+    /// now, discarding local changes that were not synced yet. The newest GitHub version is fetched
+    /// first, so this needs a connection. The discarded local state is kept under a backup ref;
+    /// files that exist only on this Mac (never synced) are left alone.
+    public func revertToRemote(
+        paths: [String],
+        progress: @escaping @Sendable (SyncPhase) -> Void = { _ in }
+    ) async -> SyncReport {
+        await runReporting { session in
+            try await performRevertToRemote(paths: paths, session: session, progress: progress)
+        }
+    }
+
     /// Writes the remote version of a conflicting file to a temporary folder so the user can
     /// compare it with the local one. Nothing in the repository changes.
     public func exportRemoteVersion(of path: String) async throws -> URL {
@@ -170,7 +185,7 @@ public struct SyncEngine: Sendable {
             outcome = .failure(SyncFailure(kind: .unknown, stage: .preflight, stderr: error.localizedDescription))
         }
         let info = try? await inspector.inspect()
-        return SyncReport(
+        var report = SyncReport(
             outcome: outcome,
             steps: session.steps,
             warnings: session.warnings,
@@ -178,6 +193,8 @@ public struct SyncEngine: Sendable {
             startedAt: start,
             duration: Date().timeIntervalSince(start)
         )
+        report.downloadedFiles = session.downloadedPaths.sorted()
+        return report
     }
 
     private func performSync(
@@ -447,6 +464,52 @@ public struct SyncEngine: Sendable {
                                     uploadedCommits: uploaded, restoredFiles: files.count))
     }
 
+    private func performRevertToRemote(
+        paths: [String],
+        session: SyncSession,
+        progress: @Sendable (SyncPhase) -> Void
+    ) async throws -> SyncReport.Outcome {
+        progress(.checking)
+        let info = try await preflight()
+        guard let branch = info.branch else { throw SyncFailure(kind: .detachedHead, stage: .preflight) }
+        progress(.downloading)
+        try await fetch(session: session)
+        guard let upstream = try await inspector.resolveUpstream(branch: branch) else {
+            throw SyncFailure(kind: .unknown, stage: .restore, message: String(localized: "GitHub 上还没有这个仓库的内容，无法还原"))
+        }
+        let specs = paths.map { ":(literal)\($0)" }
+        func list(_ args: [String]) async throws -> Set<String> {
+            let result = try await gitChecked(args + ["--"] + specs, stage: .restore, session: session)
+            return Set(result.stdoutData.split(separator: 0).map { String(decoding: $0, as: UTF8.self) })
+        }
+        // What differs from GitHub, limited to files GitHub has. A local file at a path GitHub has
+        // but this Mac never tracked would be overwritten by the restore, so it is skipped too.
+        let differing = try await list(["diff", "--name-only", "--no-renames", "-z", upstream])
+        let onGitHub = try await list(["ls-tree", "-r", "--name-only", "-z", upstream])
+        let untracked = try await list(["ls-files", "--others", "--exclude-standard", "-z"])
+        let targets = differing.intersection(onGitHub).subtracting(untracked).sorted()
+        let localOnly = untracked.union(differing.subtracting(onGitHub))
+        if !localOnly.isEmpty {
+            session.warnings.append(String(localized: "只在本机、GitHub 上没有的文件保持不变：\(localOnly.sorted().prefix(5).joined(separator: String(localized: "、")))\(localOnly.count > 5 ? String(localized: " 等 \(localOnly.count) 个") : "")"))
+        }
+        guard !targets.isEmpty else {
+            session.warnings.append(String(localized: "所选内容已经和 GitHub 上一致，无需还原。"))
+            return .noChanges
+        }
+
+        progress(.restoring)
+        // `stash create` records the local edits as a commit without touching anything.
+        let stash = try await gitChecked(["stash", "create"], stage: .restore, session: session,
+                                         extraConfig: try await identityConfig())
+        let snapshot = stash.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        let backupRef = "refs/gitcloud-sync/backup/\(Self.timestamp())"
+        _ = try await gitChecked(["update-ref", backupRef, snapshot.isEmpty ? "HEAD" : snapshot], stage: .restore, session: session)
+        session.warnings.append(String(localized: "已创建备份引用 \(backupRef)，记录了还原前的本地内容。"))
+        _ = try await gitChecked(["restore", "--source=\(upstream)", "--staged", "--worktree", "--"] + targets.map { ":(literal)\($0)" },
+                                 stage: .restore, session: session, timeout: options.localTimeout * 3)
+        return .success(SyncSummary(committedFiles: 0, downloadedCommits: 0, uploadedCommits: 0, restoredFiles: targets.count))
+    }
+
     private func applyRestore(_ target: RestoreTarget, session: SyncSession) async throws {
         switch target {
         case .file(let path, let sourcePath, let commit) where path == sourcePath:
@@ -580,15 +643,21 @@ public struct SyncEngine: Sendable {
     }
 
     private func merge(upstream: String, localAhead: Int, session: SyncSession) async throws {
+        let before = try await git(["rev-parse", "--verify", "--quiet", "HEAD"], stage: .merge, session: session)
+            .stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         if localAhead == 0 {
             _ = try await gitChecked(["merge", "--ff-only", "--quiet", upstream], stage: .merge, session: session,
                                      timeout: options.localTimeout)
+            try await recordDownloadedPaths(since: before, session: session)
             return
         }
         let args = ["merge", "--no-edit", "-m", String(localized: "GitSync：合并来自 GitHub 的更新（\(options.machineName)）"), upstream]
         let result = try await git(args, stage: .merge, session: session, timeout: options.localTimeout,
                                    extraConfig: try await identityConfig())
-        guard !result.succeeded else { return }
+        guard !result.succeeded else {
+            try await recordDownloadedPaths(since: before, session: session)
+            return
+        }
 
         let conflicts = try await conflictFiles()
         let gitDir = try await gitDirectory()
@@ -597,6 +666,16 @@ public struct SyncEngine: Sendable {
             throw ConflictDetected(files: conflicts)
         }
         throw SyncFailure.from(result, stage: .merge, command: "git merge --no-edit \(upstream)")
+    }
+
+    /// Notes the files a merge changed on disk (for refreshing documents open in other apps).
+    private func recordDownloadedPaths(since before: String, session: SyncSession) async throws {
+        guard !before.isEmpty else { return }
+        let diff = try await git(["diff", "--name-only", "--no-renames", "-z", before, "HEAD"], stage: .merge, session: session)
+        guard diff.succeeded else { return }
+        for path in diff.stdoutData.split(separator: 0) {
+            session.downloadedPaths.insert(String(decoding: path, as: UTF8.self))
+        }
     }
 
     private enum PushOutcome { case pushed, rejected }

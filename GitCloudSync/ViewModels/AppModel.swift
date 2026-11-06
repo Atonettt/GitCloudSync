@@ -16,10 +16,12 @@ struct RepoRuntime {
     /// Possible new locations of a folder that can't be found.
     var candidates: [URL] = []
     var searchingCandidates = false
+    /// Downloading the repository from GitHub again after its folder was deleted.
+    var downloading = false
 }
 
 enum SyncTrigger: String {
-    case manualSingle, manualAll, scheduled, startup, wake, networkRestored, conflictResolution, restore, enabled
+    case manualSingle, manualAll, scheduled, startup, wake, networkRestored, conflictResolution, restore, enabled, officeActivated
 
     var isManual: Bool { self == .manualSingle || self == .manualAll || self == .conflictResolution || self == .restore }
 
@@ -33,6 +35,7 @@ enum SyncTrigger: String {
         case .conflictResolution: String(localized: "解决冲突")
         case .restore: String(localized: "恢复历史版本")
         case .enabled: String(localized: "开启自动同步")
+        case .officeActivated: String(localized: "切换到 Office 时同步")
         }
     }
 }
@@ -44,6 +47,7 @@ enum AppSheet: Identifiable {
     case deleteRepository(UUID, github: Bool, local: Bool)
     case storage(UUID)
     case deviceFlow
+    case downloadFromGitHub
 
     var id: String {
         switch self {
@@ -53,6 +57,7 @@ enum AppSheet: Identifiable {
         case .deleteRepository(let id, _, _): "delete-\(id)"
         case .storage(let id): "storage-\(id)"
         case .deviceFlow: "device-flow"
+        case .downloadFromGitHub: "download-from-github"
         }
     }
 }
@@ -160,6 +165,12 @@ final class AppModel {
             Task { @MainActor in
                 for repo in AppModel.shared.repositories { AppModel.shared.followFolder(repo.id) }
             }
+        }
+        center.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { note in
+            let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            guard let bundleID = app?.bundleIdentifier,
+                  OfficeDocuments.apps.contains(where: { $0.bundleID == bundleID }) else { return }
+            Task { @MainActor in AppModel.shared.checkGitHubOnOfficeSwitch() }
         }
         center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { _ in
             Task { @MainActor in AppModel.shared.log(nil, String(localized: "系统"), .info, String(localized: "系统即将休眠")) }
@@ -671,6 +682,235 @@ final class AppModel {
         return nil
     }
 
+    /// Downloads a repository whose folder was deleted from GitHub again, to its old place or to
+    /// `folder`, then carries on syncing. Never replaces a folder that has files in it.
+    func redownload(_ id: UUID, to folder: URL? = nil) async {
+        guard let repo = repository(id), let git = gitEnvironment else { return }
+        guard let remote = runtime[id]?.info?.remoteURL ?? repo.knownRemote else {
+            alert = AppAlert(title: String(localized: "无法重新下载"),
+                             message: String(localized: "不知道「\(repo.displayName)」对应的 GitHub 地址。请用「重新定位」选择文件夹。"))
+            return
+        }
+        let destination = folder ?? URL(fileURLWithPath: repo.path)
+        let path = RepositoryCreator.canonicalPath(destination.path)
+        if let other = repositories.first(where: { $0.id != id && RepositoryCreator.canonicalPath($0.path) == path }) {
+            alert = AppAlert(title: String(localized: "无法重新下载"),
+                             message: String(localized: "「\(destination.lastPathComponent)」已经是列表中的「\(other.displayName)」。"))
+            return
+        }
+        runtime[id, default: RepoRuntime()].downloading = true
+        defer { runtime[id]?.downloading = false }
+        log(id, String(localized: "重新下载"), .info, String(localized: "正在从 GitHub 下载 \(repo.displayName) 到 \(destination.path)"))
+        do {
+            try await RepositoryCreator(git: git).download(remoteURL: remote, to: destination,
+                                                          credential: await auth.credentialForGit(),
+                                                          identity: auth.identity, ignorePatterns: settings.ignorePatterns)
+            adopt(id, folder: destination, message: String(localized: "已从 GitHub 重新下载 \(repo.displayName) 到 \(destination.path)"))
+            await refreshInfo(id)
+        } catch {
+            let message = (error as? SyncFailure)?.message ?? error.localizedDescription
+            log(id, String(localized: "重新下载"), .error, message)
+            alert = AppAlert(title: String(localized: "无法重新下载"), message: message)
+        }
+    }
+
+    // MARK: - Checking GitHub when switching to Office
+
+    @ObservationIgnored private var lastOfficeSwitchCheck: Date?
+
+    /// Switching to Word, Excel or PowerPoint asks GitHub right away whether anything changed, so a
+    /// document edited in the cloud is downloaded (and reopened) without waiting for the next sync.
+    /// The question is one small request per repository; a real sync only runs when there is news.
+    func checkGitHubOnOfficeSwitch() {
+        guard !isShuttingDown, isOnline, let git = gitEnvironment else { return }
+        if let last = lastOfficeSwitchCheck, Date().timeIntervalSince(last) < 10 { return }
+        lastOfficeSwitchCheck = Date()
+        for repo in repositories where repo.autoSyncEnabled && !repo.pausedForConflict {
+            guard runtime[repo.id]?.isSyncing != true, runtime[repo.id]?.info?.remoteURL != nil else { continue }
+            let id = repo.id
+            let folder = URL(fileURLWithPath: repo.path)
+            Task {
+                let credential = await auth.credentialForGit()
+                let inspector = RepositoryInspector(client: GitClient(repositoryURL: folder, git: git, credential: credential))
+                if await inspector.remoteHasNewCommits() {
+                    sync(id, trigger: .officeActivated)
+                }
+            }
+        }
+    }
+
+    // MARK: - Documents open in Office
+
+    @ObservationIgnored private var automationNoticeShown = false
+    private static let officeExtensions: Set<String> = [
+        "doc", "docx", "docm", "dot", "dotx", "rtf", "xls", "xlsx", "xlsm", "xlsb", "csv", "ppt", "pptx", "pptm",
+    ]
+
+    /// After a sync downloaded new versions, reopens those that are open in Word, Excel or
+    /// PowerPoint so they show the new content. Documents with unsaved edits are never touched
+    /// without asking: the user chooses to keep both versions or use GitHub's.
+    func refreshOpenDocuments(_ id: UUID, relativePaths: [String]) {
+        guard let repo = repository(id) else { return }
+        let root = URL(fileURLWithPath: repo.path)
+        let candidates = Set(relativePaths
+            .filter { Self.officeExtensions.contains(URL(fileURLWithPath: $0).pathExtension.lowercased()) }
+            .map { root.appendingPathComponent($0).path }
+            .filter { FileManager.default.fileExists(atPath: $0) }
+            .filter(OfficeDocuments.probablyOpen))
+        guard !candidates.isEmpty else { return }
+
+        let (documents, problems) = OfficeDocuments.openDocuments(among: candidates)
+        let stage = String(localized: "刷新打开的文档")
+        for problem in problems {
+            switch problem {
+            case .notAllowed(let app):
+                log(id, stage, .warning, String(localized: "没有控制 Office 的权限，无法刷新已打开的文档（\(app)）"))
+                if !automationNoticeShown {
+                    automationNoticeShown = true
+                    notifications.post(
+                        title: String(localized: "无法刷新 Office 中打开的文档"),
+                        body: String(localized: "\(repo.displayName) 下载了新版本。如果文档正在 Word、Excel 或 PowerPoint 中打开，请关闭（不保存）后重新打开。要让 GitSync 自动刷新，请在「系统设置 › 隐私与安全性 › 自动化」中允许 GitSync 控制它们。"),
+                        identifier: "office-permission")
+                }
+            case .script(let message):
+                log(id, stage, .warning, String(localized: "读取打开的文档失败：\(message)"))
+            }
+        }
+
+        for document in documents where document.saved {
+            if let problem = OfficeDocuments.reopen(document) {
+                log(id, stage, .warning, String(localized: "无法在 \(document.app.name) 中刷新「\(document.fileName)」：\(Self.describe(problem))"))
+            } else {
+                log(id, stage, .success, String(localized: "已在 \(document.app.name) 中刷新「\(document.fileName)」"))
+                notifications.post(title: String(localized: "已在 \(document.app.name) 中刷新"),
+                                   body: document.fileName, identifier: "office-\(document.path)")
+            }
+        }
+
+        let edited = documents.filter { !$0.saved }
+        guard !edited.isEmpty else { return }
+        // Ask after the current update has finished, one document at a time.
+        Task { @MainActor in
+            for document in edited { askAboutEditedDocument(id, document) }
+        }
+    }
+
+    private func askAboutEditedDocument(_ id: UUID, _ document: OfficeDocuments.OpenDocument) {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "「\(document.fileName)」在 \(document.app.name) 里有未保存的修改")
+        alert.informativeText = String(localized: "GitHub 上的新版本刚刚同步到这台 Mac。如果直接在 \(document.app.name) 里保存，会用你打开时的旧内容覆盖新版本。")
+        alert.addButton(withTitle: String(localized: "两个都保留"))
+        alert.addButton(withTitle: String(localized: "用云端版本"))
+        alert.addButton(withTitle: String(localized: "稍后处理"))
+        let stage = String(localized: "刷新打开的文档")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            let copy = OfficeDocuments.copyPath(for: document.path)
+            if let problem = OfficeDocuments.saveCopyAndReopen(document, copyPath: copy) {
+                log(id, stage, .error, String(localized: "无法另存「\(document.fileName)」的修改：\(Self.describe(problem))"))
+                self.alert = AppAlert(title: String(localized: "无法另存你的修改"),
+                                      message: String(localized: "请在 \(document.app.name) 中用「文件 › 另存为」把修改存成另一个文件，再重新打开「\(document.fileName)」。"))
+            } else {
+                log(id, stage, .success, String(localized: "你的修改已另存为「\((copy as NSString).lastPathComponent)」，并打开了云端版本「\(document.fileName)」"))
+            }
+        case .alertSecondButtonReturn:
+            if let problem = OfficeDocuments.reopen(document) {
+                log(id, stage, .error, String(localized: "无法在 \(document.app.name) 中刷新「\(document.fileName)」：\(Self.describe(problem))"))
+            } else {
+                log(id, stage, .warning, String(localized: "已丢弃 \(document.app.name) 中未保存的修改，打开了云端版本「\(document.fileName)」"))
+            }
+        default:
+            log(id, stage, .warning, String(localized: "「\(document.fileName)」在 \(document.app.name) 中仍是旧内容；保存前请先处理，否则会覆盖云端版本"))
+        }
+    }
+
+    private static func describe(_ problem: OfficeDocuments.Problem) -> String {
+        switch problem {
+        case .notAllowed: String(localized: "没有控制权限")
+        case .script(let message): message
+        }
+    }
+
+    // MARK: - Download from GitHub
+
+    /// The signed-in account's GitHub repositories, for picking one to download.
+    func gitHubRepositories() async throws -> [GitHubRepositorySummary] {
+        guard let credential = await auth.credentialForGit() else {
+            throw GitHubAPIError.unauthorized
+        }
+        return try await GitHubAPI.listRepositories(token: credential.token)
+    }
+
+    /// The list entry already syncing `repository`, matched by its GitHub owner/name.
+    func existingRepository(for repository: GitHubRepositorySummary) -> RepositoryConfig? {
+        repositories.first { config in
+            guard let remote = runtime[config.id]?.info?.remoteURL ?? config.knownRemote,
+                  let name = RepositoryRemoval.gitHubFullName(fromRemote: remote) else { return false }
+            return "\(name.owner)/\(name.name)".lowercased() == repository.fullName.lowercased()
+        }
+    }
+
+    /// Where downloads go unless the user picks another place: next to the first repository, else Documents.
+    var defaultDownloadFolder: URL {
+        if let first = repositories.first {
+            let parent = URL(fileURLWithPath: first.path).deletingLastPathComponent()
+            if FileManager.default.fileExists(atPath: parent.path) { return parent }
+        }
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser
+    }
+
+    /// Permanently deletes a repository on GitHub that has no folder on this Mac. Repositories in
+    /// the list go through `deleteRepository`, which also takes care of the local folder.
+    func deleteGitHubRepository(_ repository: GitHubRepositorySummary) async -> DeletionOutcome {
+        guard existingRepository(for: repository) == nil else {
+            return .failed(String(localized: "这个仓库在列表中，请在它的仓库页「更多」菜单里删除。"))
+        }
+        let parts = repository.fullName.split(separator: "/", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return .failed(String(localized: "无法识别仓库名 \(repository.fullName)")) }
+        guard let credential = await auth.credentialForGit() else {
+            return .failed(String(localized: "未登录 GitHub"))
+        }
+        do {
+            try await GitHubAPI.deleteRepository(token: credential.token, owner: parts[0], name: parts[1])
+        } catch GitHubAPIError.missingDeleteScope {
+            auth.handleGitAuthFailure()   // drops the cached CLI token so a refreshed one is picked up
+            return .needsDeleteScope
+        } catch GitHubAPIError.notFound {
+            // Already gone.
+        } catch {
+            return .failed(error.localizedDescription)
+        }
+        log(nil, String(localized: "删除 GitHub 仓库"), .warning, String(localized: "已删除 GitHub 上的仓库 \(repository.fullName)"))
+        return .done
+    }
+
+    /// Downloads a GitHub repository into `destination` and adds it to the list. Returns an error
+    /// message, or nil on success.
+    func downloadFromGitHub(_ repository: GitHubRepositorySummary, to destination: URL, autoSync: Bool) async -> String? {
+        guard let git = gitEnvironment else { return gitProblem ?? String(localized: "未找到 Git") }
+        if let reason = RepositoryCreator.refusalReason(for: destination) { return reason }
+        do {
+            try await RepositoryCreator(git: git).download(remoteURL: repository.cloneURL, to: destination,
+                                                          credential: await auth.credentialForGit(),
+                                                          identity: auth.identity, ignorePatterns: settings.ignorePatterns)
+        } catch {
+            return (error as? SyncFailure)?.message ?? error.localizedDescription
+        }
+        await addRepositories(urls: [destination])
+        guard let added = repositories.first(where: { RepositoryCreator.canonicalPath($0.path) == RepositoryCreator.canonicalPath(destination.path) }) else {
+            return nil
+        }
+        log(added.id, String(localized: "从 GitHub 下载"), .success,
+            String(localized: "已从 GitHub 下载 \(repository.fullName) 到 \(destination.path)"))
+        // Show it in the main window (the sidebar keeps its selection in this default).
+        UserDefaults.standard.set(added.id.uuidString, forKey: "repositoryList.selection")
+        if autoSync { setAutoSync(true, for: added.id) }
+        return nil
+    }
+
     /// Moves a trashed repository folder back to where it was.
     func putBackFromTrash(_ id: UUID) async {
         guard let repo = repository(id), let trashed = runtime[id]?.trashedURL else { return }
@@ -907,6 +1147,35 @@ final class AppModel {
 
     /// Brings a file or the whole folder back to a committed version, then syncs the result.
     func restore(_ id: UUID, target: RestoreTarget, description: String) {
+        guard let repo = repository(id) else { return }
+        runRestore(id, logTitle: String(localized: "恢复历史版本"),
+                   logMessage: String(localized: "开始恢复 \(repo.displayName)：\(description)")) { engine, progress in
+            await engine.restore(target, description: description, progress: progress)
+        }
+    }
+
+    /// Puts files or folders back to their current GitHub version, discarding local changes that
+    /// were not synced yet (a backup of them stays on this Mac).
+    func revertToCloud(_ id: UUID, paths: [String]) {
+        guard let repo = repository(id), !paths.isEmpty else { return }
+        let names = paths.prefix(3).joined(separator: String(localized: "、")) + (paths.count > 3 ? String(localized: " 等 \(paths.count) 项") : "")
+        runRestore(id, logTitle: String(localized: "还原为云端版本"),
+                   logMessage: String(localized: "开始将 \(repo.displayName) 中的 \(names) 还原为 GitHub 上的版本")) { engine, progress in
+            await engine.revertToRemote(paths: paths, progress: progress)
+        }
+    }
+
+    /// Local changes not synced yet, as `git status` reports them.
+    func pendingChanges(_ id: UUID) async -> [StatusEntry] {
+        guard let repo = repository(id), let git = gitEnvironment else { return [] }
+        let client = GitClient(repositoryURL: URL(fileURLWithPath: repo.path), git: git)
+        guard let result = try? await client.run(["status", "--porcelain=v1", "-z", "--untracked-files=all"], timeout: 60),
+              result.succeeded else { return [] }
+        return StatusEntry.parse(result.stdoutData).sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
+    }
+
+    private func runRestore(_ id: UUID, logTitle: String, logMessage: String,
+                            operation: @escaping @Sendable (SyncEngine, @escaping @Sendable (SyncPhase) -> Void) async -> SyncReport) {
         guard !isShuttingDown, let repo = repository(id), let git = gitEnvironment else { return }
         guard runtime[id]?.isSyncing != true else {
             alert = AppAlert(title: String(localized: "请稍候"), message: String(localized: "\(repo.displayName) 正在同步，完成后再恢复。"))
@@ -915,13 +1184,13 @@ final class AppModel {
         runtime[id, default: RepoRuntime()].isSyncing = true
         runtime[id]?.phase = nil
         let options = makeSyncOptions()
-        log(id, String(localized: "恢复历史版本"), .info, String(localized: "开始恢复 \(repo.displayName)：\(description)"))
+        log(id, logTitle, .info, logMessage)
 
         syncTasks[id] = Task {
             let credential = await auth.credentialForGit()
             let engine = SyncEngine(client: GitClient(repositoryURL: URL(fileURLWithPath: repo.path), git: git, credential: credential), options: options)
             let report = await coordinator.run(id: id) {
-                await engine.restore(target, description: description) { phase in
+                await operation(engine) { phase in
                     Task { @MainActor in AppModel.shared.updatePhase(id, phase) }
                 }
             }
@@ -1013,6 +1282,9 @@ final class AppModel {
                 detail: join(warningsText, stepsText), duration: duration)
             if settings.notifyOnChanges, summary.downloadedCommits > 0 || summary.uploadedCommits > 0 {
                 notifications.post(title: String(localized: "\(repo.displayName) 已同步"), body: summary.text, identifier: "sync-\(id)")
+            }
+            if let downloaded = report?.downloadedFiles, !downloaded.isEmpty {
+                refreshOpenDocuments(id, relativePaths: downloaded)
             }
         case .noChanges:
             Task { await followRemoteRename(id) }

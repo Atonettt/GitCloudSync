@@ -22,6 +22,7 @@ struct RepositoryFilesView: View {
     @State private var selection: Item.ID?
     @State private var unsynced: Set<String> = []
     @State private var loading = false
+    @State private var revertTarget: Item?
 
     private var root: URL { URL(fileURLWithPath: repo.path) }
 
@@ -34,7 +35,18 @@ struct RepositoryFilesView: View {
             preview
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .task(id: folder) { await reload() }
+        // No refresh button: the list follows the folder by itself — files added, removed or renamed
+        // here (in Finder or another app), every finished sync, and coming back to the app.
+        .task(id: folder) {
+            await reload()
+            let directory = folder.isEmpty ? root : root.appendingPathComponent(folder)
+            for await _ in FolderChanges.stream(for: directory) {
+                await reload()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await reload() }
+        }
         // Clicking a folder goes into it, like a sidebar; files are previewed on the right.
         .onChange(of: selection) { _, id in
             if let item = item(id), item.isDirectory { folder = item.path }
@@ -59,13 +71,6 @@ struct RepositoryFilesView: View {
                     .help("返回上一级")
                 }
                 ScrollView(.horizontal, showsIndicators: false) { breadcrumb }
-                Button {
-                    Task { await reload() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(.borderless)
-                .help("刷新")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -80,9 +85,24 @@ struct RepositoryFilesView: View {
                     if !item.isDirectory {
                         Button("历史版本") { showHistory(item) }
                     }
+                    if isPending(item) {
+                        Divider()
+                        Button("还原为云端版本…") { revertTarget = item }
+                    }
                 }
             } primaryAction: { ids in
                 if let item = item(ids.first) { open(item) }
+            }
+            .confirmationDialog(
+                String(localized: "将「\(revertTarget?.name ?? "")」还原为 GitHub 上的版本？"),
+                isPresented: Binding(get: { revertTarget != nil }, set: { if !$0 { revertTarget = nil } }),
+                presenting: revertTarget
+            ) { item in
+                Button("还原", role: .destructive) { model.revertToCloud(repo.id, paths: [item.path]) }
+            } message: { item in
+                Text(item.isDirectory
+                     ? "这个文件夹里还没同步的修改会被丢弃，换回 GitHub 上现在的内容。只在本机的新文件不受影响；丢弃的内容会在本机保留一份备份。"
+                     : "这个文件还没同步的修改会被丢弃，换回 GitHub 上现在的内容。丢弃的内容会在本机保留一份备份。")
             }
             .overlay {
                 if !loading, items.isEmpty {
@@ -139,10 +159,11 @@ struct RepositoryFilesView: View {
         if !item.isDirectory, let size = item.size, size > Int64(max(1, model.settings.largeFileLimitMB)) * 1024 * 1024 {
             return (String(localized: "超过上限"), .orange)
         }
-        let pending = item.isDirectory
-            ? unsynced.contains { $0.hasPrefix(item.path + "/") }
-            : unsynced.contains(item.path)
-        return pending ? (String(localized: "未同步"), .orange) : nil
+        return isPending(item) ? (String(localized: "未同步"), .orange) : nil
+    }
+
+    private func isPending(_ item: Item) -> Bool {
+        item.isDirectory ? unsynced.contains { $0.hasPrefix(item.path + "/") } : unsynced.contains(item.path)
     }
 
     // MARK: Preview
@@ -167,7 +188,7 @@ struct RepositoryFilesView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    QuickLookView(url: url(item)).id(item.id)
+                    QuickLookView(url: url(item), revision: item.modified).id(item.id)
                 }
             }
             .frame(maxHeight: .infinity, alignment: .top)
@@ -288,4 +309,45 @@ private enum FileIcons {
         cache.setObject(image, forKey: key as NSString)
         return image
     }
+}
+
+/// Changes to the entries of one folder (added, removed, renamed or replaced files), delivered
+/// at most a few times a second. Ends when the folder goes away or the consuming task is cancelled.
+enum FolderChanges {
+    static func stream(for directory: URL) -> AsyncStream<Void> {
+        AsyncStream { continuation in
+            let descriptor = open(directory.path, O_EVTONLY)
+            guard descriptor >= 0 else {
+                continuation.finish()
+                return
+            }
+            let source = DispatchSource.makeFileSystemObjectSource(
+                fileDescriptor: descriptor, eventMask: [.write, .delete, .rename, .extend, .attrib],
+                queue: .main)
+            let pending = PendingFlag()
+            source.setEventHandler {
+                if source.data.contains(.delete) || source.data.contains(.rename) {
+                    // The folder itself was removed or moved: the view goes back to the top.
+                    continuation.yield()
+                    continuation.finish()
+                    return
+                }
+                // Coalesce bursts (a save writes several times) into one reload.
+                guard !pending.value else { return }
+                pending.value = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    pending.value = false
+                    continuation.yield()
+                }
+            }
+            source.setCancelHandler { close(descriptor) }
+            continuation.onTermination = { _ in source.cancel() }
+            source.resume()
+        }
+    }
+}
+
+/// Only touched on the main queue, where the folder events and the delayed reload both run.
+private final class PendingFlag: @unchecked Sendable {
+    var value = false
 }

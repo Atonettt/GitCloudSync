@@ -7,69 +7,54 @@ struct MenuBarView: View {
 
     var body: some View {
         let running = model.autoSyncCount > 0
+        let total = model.repositories.count
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
+            HStack(spacing: 8) {
                 AppIconView(size: 22)
-                Text("GitSync").font(.headline)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("GitSync").font(.headline)
+                    if running, let next = model.nextSyncDate {
+                        Text("每 \(model.settings.intervalMinutes) 分钟 · 下次 \(next.formatted(date: .omitted, time: .shortened))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 Spacer()
-                Text(model.overallStatusText).font(.caption).foregroundStyle(.secondary)
-            }
-            if running, let next = model.nextSyncDate {
-                Text("每 \(model.settings.intervalMinutes) 分钟 · 下次 \(next.formatted(date: .omitted, time: .shortened))")
-                    .font(.caption).foregroundStyle(.secondary)
+                if running, model.autoSyncCount < total {
+                    Text("\(model.autoSyncCount)/\(total)")
+                        .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                        .help("\(total) 个仓库中有 \(model.autoSyncCount) 个开启了自动同步")
+                }
+                Toggle("自动同步", isOn: Binding(get: { running }, set: { model.setAutoSyncForAll($0) }))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .tint(.green)
+                    .fixedSize()
+                    .help(running ? String(localized: "关闭后所有仓库暂停自动同步") : String(localized: "打开后所有仓库开启自动同步，并马上同步一次"))
+                    .disabled(model.gitEnvironment == nil || total == 0)
             }
 
-            HStack {
-                Button {
-                    model.syncAll(trigger: .manualAll)
-                } label: {
-                    Label("立即同步全部", systemImage: "arrow.triangle.2.circlepath")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                Button {
-                    model.setAutoSyncForAll(!running)
-                } label: {
-                    Label(running ? String(localized: "全部暂停") : String(localized: "全部开启"), systemImage: running ? "pause.fill" : "play.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .help(running ? String(localized: "关闭所有仓库的自动同步开关") : String(localized: "打开所有仓库的自动同步开关并立即同步"))
+            Button {
+                model.syncAll(trigger: .manualAll)
+            } label: {
+                Label("全部同步", systemImage: "arrow.triangle.2.circlepath")
+                    .frame(maxWidth: .infinity)
             }
-            .disabled(model.gitEnvironment == nil || model.repositories.isEmpty)
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .help("马上同步所有仓库，包括自动同步关闭的")
+            .disabled(model.gitEnvironment == nil || total == 0)
 
             Divider()
 
             if model.repositories.isEmpty {
                 Text("尚未添加仓库").foregroundStyle(.secondary).font(.callout)
+            } else if total <= 6 {
+                repositoryRows
             } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(model.repositories) { repo in
-                            let status = model.displayStatus(for: repo)
-                            HStack(spacing: 8) {
-                                if status.isActive {
-                                    ProgressView().controlSize(.mini)
-                                } else {
-                                    Image(systemName: status.symbol).foregroundStyle(status.color)
-                                }
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(repo.displayName).lineLimit(1)
-                                    Text(status.displayName + (repo.lastSyncAt.map { " · \($0.relativeDescription)" } ?? ""))
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Button {
-                                    model.sync(repo.id, trigger: .manualSingle)
-                                } label: { Image(systemName: "arrow.triangle.2.circlepath") }
-                                    .buttonStyle(.borderless)
-                                    .disabled(model.runtime[repo.id]?.isSyncing == true)
-                                    .help("立即同步")
-                            }
-                        }
-                    }
-                }
-                // A ScrollView has no height of its own in the menu bar panel; size it to the rows.
-                .frame(height: min(CGFloat(model.repositories.count) * 40, 240))
+                // Many repositories: scroll inside a fixed height (a ScrollView has no height of its
+                // own in the menu bar panel).
+                ScrollView { repositoryRows }
+                    .frame(height: 260)
             }
 
             Divider()
@@ -86,6 +71,33 @@ struct MenuBarView: View {
         }
         .padding(14)
         .frame(width: 340)
+    }
+
+    private var repositoryRows: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(model.repositories) { repo in
+                let status = model.displayStatus(for: repo)
+                HStack(spacing: 8) {
+                    if status.isActive {
+                        ProgressView().controlSize(.mini)
+                    } else {
+                        Image(systemName: status.symbol).foregroundStyle(status.color)
+                    }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(repo.displayName).lineLimit(1)
+                        Text(status.displayName + (repo.lastSyncAt.map { " · \($0.relativeDescription)" } ?? ""))
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Spacer()
+                    Button {
+                        model.sync(repo.id, trigger: .manualSingle)
+                    } label: { Image(systemName: "arrow.triangle.2.circlepath") }
+                        .buttonStyle(.borderless)
+                        .disabled(model.runtime[repo.id]?.isSyncing == true)
+                        .help("立即同步")
+                }
+            }
+        }
     }
 
     private func show(_ id: String) {

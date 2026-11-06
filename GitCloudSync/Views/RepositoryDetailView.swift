@@ -9,6 +9,7 @@ struct RepositoryDetailView: View {
     @State private var confirmRemove = false
     @State private var confirmAbort = false
     @State private var showActivity = false
+    @State private var showPending = false
     @State private var showDetails = false
 
     var body: some View {
@@ -17,7 +18,7 @@ struct RepositoryDetailView: View {
         let status = model.displayStatus(for: repo)
         let syncing = runtime?.isSyncing == true
 
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 8) {
             header(status: status, phase: runtime?.phase, info: info)
 
             if repo.lastStatus == .conflict, !repo.conflictFiles.isEmpty, !syncing {
@@ -54,7 +55,9 @@ struct RepositoryDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.primary.opacity(0.1)))
         }
-        .padding(24)
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+        .padding(.bottom, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .confirmationDialog("从列表移除「\(repo.displayName)」？", isPresented: $confirmRemove) {
             Button("移除", role: .destructive) { model.removeRepository(repo.id) }
@@ -71,13 +74,14 @@ struct RepositoryDetailView: View {
     // MARK: Sections
 
     private func header(status: SyncStatus, phase: SyncPhase?, info: RepositoryInfo?) -> some View {
-        HStack(alignment: .center, spacing: 14) {
+        // One line: name, status and the sync controls.
+        HStack(alignment: .center, spacing: 8) {
             Image(systemName: "folder.fill")
-                .font(.system(size: 34))
+                .font(.system(size: 18))
                 .foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 6) {
-                    Text(repo.displayName).font(.title.bold()).lineLimit(1).truncationMode(.middle)
+            HStack(spacing: 8) {
+                HStack(spacing: 4) {
+                    Text(repo.displayName).font(.title3.bold()).lineLimit(1).truncationMode(.middle)
                     Button {
                         showDetails.toggle()
                     } label: {
@@ -96,7 +100,7 @@ struct RepositoryDetailView: View {
                         .frame(width: 460)
                     }
                 }
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     StatusBadge(status: status)
                     if let phase {
                         Text(phase.displayName).font(.caption).foregroundStyle(.secondary)
@@ -128,7 +132,6 @@ struct RepositoryDetailView: View {
                         Label("立即同步", systemImage: "arrow.triangle.2.circlepath")
                     }
                 }
-                .controlSize(.large)
                 .disabled(model.runtime[repo.id]?.isSyncing == true || model.gitEnvironment == nil)
                 .help("马上同步这个仓库")
             }
@@ -178,7 +181,25 @@ struct RepositoryDetailView: View {
             }
         } detail: {
             if let info, info.remoteURL != nil {
-                Text("待上传 \(info.ahead) · 待下载 \(info.behind)")
+                HStack(spacing: 6) {
+                    Text("待上传 \(info.ahead) · 待下载 \(info.behind)").lineLimit(1)
+                    if info.changedFiles > 0 {
+                        Button {
+                            showPending.toggle()
+                        } label: {
+                            Label("查看", systemImage: "list.bullet")
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(Color.accentColor)
+                        .fixedSize()
+                        .help("查看还没同步的修改，可以还原为 GitHub 上的版本")
+                        .popover(isPresented: $showPending, arrowEdge: .bottom) {
+                            PendingChangesView(repo: repo)
+                                .padding(14)
+                                .frame(width: 460)
+                        }
+                    }
+                }
             }
         }
     }
@@ -260,7 +281,7 @@ struct RepositoryDetailView: View {
             }
             .fixedSize()
         }
-        .controlSize(.large)
+        .controlSize(.regular)
     }
 
     private func details(info: RepositoryInfo?) -> some View {
@@ -393,7 +414,7 @@ struct MissingFolderView: View {
                         Text("放回原处后会继续同步。").font(.caption).foregroundStyle(.secondary)
                     } else {
                         Text("找不到文件夹「\(repo.displayName)」").font(.callout.weight(.medium))
-                        Text("原来的位置：\(repo.path)。如果移动过它，选出新位置后会继续同步，设置和历史都保留。")
+                        Text("原来的位置：\(repo.path)。如果移动过它，选出新位置后会继续同步；如果已经删除，可以从 GitHub 重新下载。设置和历史都保留。")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -420,8 +441,23 @@ struct MissingFolderView: View {
                     Button("放回原处") { Task { await model.putBackFromTrash(repo.id) } }
                         .buttonStyle(.borderedProminent)
                 }
-                Button("重新定位…") { chooseFolder() }
-                Button("从列表移除…") { confirmRemove = true }
+                if runtime?.downloading == true {
+                    ProgressView().controlSize(.small)
+                    Text("正在从 GitHub 下载…").font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Menu {
+                        Button("下载到原来的位置") { Task { await model.redownload(repo.id) } }
+                        Button("下载到其他位置…") { chooseDownloadLocation() }
+                    } label: {
+                        Label("从 GitHub 重新下载", systemImage: "icloud.and.arrow.down")
+                    } primaryAction: {
+                        Task { await model.redownload(repo.id) }
+                    }
+                    .menuStyle(.button)
+                    .fixedSize()
+                    Button("重新定位…") { chooseFolder() }
+                    Button("从列表移除…") { confirmRemove = true }
+                }
             }
             .controlSize(.small)
         }
@@ -449,6 +485,22 @@ struct MissingFolderView: View {
         relocate(to: url)
     }
 
+    /// Asks for the folder to download into; the repository goes into a new folder with its name.
+    private func chooseDownloadLocation() {
+        let panel = NSOpenPanel()
+        panel.title = String(localized: "从 GitHub 重新下载「\(repo.displayName)」")
+        panel.message = String(localized: "选择放在哪个文件夹里，会在里面新建「\(URL(fileURLWithPath: repo.path).lastPathComponent)」")
+        panel.prompt = String(localized: "下载到这里")
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let parent = panel.url else { return }
+        let destination = parent.appendingPathComponent(URL(fileURLWithPath: repo.path).lastPathComponent, isDirectory: true)
+        Task { await model.redownload(repo.id, to: destination) }
+    }
+
     private func relocate(to url: URL) {
         Task {
             if let error = await model.relocate(repo.id, to: url) {
@@ -465,13 +517,14 @@ private struct StatTile<Value: View, Detail: View>: View {
     @ViewBuilder let detail: Detail
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            value.font(.title3.weight(.semibold)).lineLimit(1)
+            value.font(.headline).lineLimit(1)
             detail.font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .insetBackground(cornerRadius: 10)
     }
 }
@@ -558,5 +611,89 @@ private struct CopyableText: View {
         .focusEffectDisabled()   // the popover gives it keyboard focus on opening; no ring needed
         .onHover { hovering = $0 }
         .help("点击复制")
+    }
+}
+
+/// Local changes that are not on GitHub yet. Edited and deleted files can be put back to their
+/// GitHub version; new files exist only here, so there is nothing to put back.
+private struct PendingChangesView: View {
+    @Environment(AppModel.self) private var model
+    let repo: RepositoryConfig
+    @State private var entries: [StatusEntry] = []
+    @State private var loaded = false
+    @State private var confirm: [String]?
+
+    private var revertible: [StatusEntry] { entries.filter { !$0.isUntracked } }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("未同步的修改").font(.headline)
+                Spacer()
+                if revertible.count > 1 {
+                    Button("全部还原为云端版本…") { confirm = revertible.map(\.path) }
+                        .controlSize(.small)
+                }
+            }
+            if !loaded {
+                ProgressView().controlSize(.small).frame(maxWidth: .infinity)
+            } else if entries.isEmpty {
+                Text("没有未同步的修改").foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(entries, id: \.self) { entry in
+                            row(entry)
+                            Divider()
+                        }
+                    }
+                }
+                .frame(maxHeight: 320)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            Text("还原会丢弃本机还没同步的修改，换回 GitHub 上现在的内容；丢弃的内容会在本机保留一份备份。")
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .task(id: model.runtime[repo.id]?.isSyncing) {
+            entries = await model.pendingChanges(repo.id)
+            loaded = true
+        }
+        .confirmationDialog(
+            confirm?.count == 1
+                ? String(localized: "将「\(URL(fileURLWithPath: confirm?.first ?? "").lastPathComponent)」还原为 GitHub 上的版本？")
+                : String(localized: "将 \(confirm?.count ?? 0) 个文件还原为 GitHub 上的版本？"),
+            isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
+            presenting: confirm
+        ) { paths in
+            Button("还原", role: .destructive) { model.revertToCloud(repo.id, paths: paths) }
+        } message: { _ in
+            Text("本机还没同步的修改会被丢弃，丢弃的内容会在本机保留一份备份。")
+        }
+    }
+
+    private func row(_ entry: StatusEntry) -> some View {
+        let (label, color): (String, Color) = entry.isUntracked
+            ? (String(localized: "新增"), .green)
+            : entry.isDeletion ? (String(localized: "已删除"), .red) : (String(localized: "已修改"), .orange)
+        return HStack(spacing: 8) {
+            Text(label)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(color)
+                .padding(.horizontal, 5).padding(.vertical, 1)
+                .background(color.opacity(0.12), in: Capsule())
+                .frame(width: 48)
+            Text(entry.path).lineLimit(1).truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help(entry.path)
+            if entry.isUntracked {
+                Text("只在本机").font(.caption).foregroundStyle(.tertiary)
+            } else {
+                Button("还原") { confirm = [entry.path] }
+                    .controlSize(.small)
+                    .disabled(model.runtime[repo.id]?.isSyncing == true)
+            }
+        }
+        .padding(.vertical, 5)
     }
 }

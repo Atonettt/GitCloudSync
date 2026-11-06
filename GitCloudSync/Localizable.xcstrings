@@ -3843,18 +3843,18 @@
         }
       }
     },
-    "原来的位置：%@。如果移动过它，选出新位置后会继续同步，设置和历史都保留。": {
+    "原来的位置：%@。如果移动过它，选出新位置后会继续同步；如果已经删除，可以从 GitHub 重新下载。设置和历史都保留。": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Previous location: %@. If you moved it, choose its new location to keep syncing; settings and history are kept."
+            "value": "Originally at %@. If you moved it, choose its new location to keep syncing; if it was deleted, download it again from GitHub. Settings and history are kept."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "原来的位置：%@。如果移动过它，选出新位置后会继续同步，设置和历史都保留。"
+            "value": "原来的位置：%@。如果移动过它，选出新位置后会继续同步；如果已经删除，可以从 GitHub 重新下载。设置和历史都保留。"
           }
         }
       }
@@ -11581,6 +11581,2054 @@
           "stringUnit": {
             "state": "translated",
             "value": "，未解决的文件：%@"
+          }
+        }
+      }
+    },
+    "「%@」已存在且不是空的，GitSync 不会覆盖它。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” already exists and isn't empty. GitSync won't overwrite it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」已存在且不是空的，GitSync 不会覆盖它。"
+          }
+        }
+      }
+    },
+    "下载到其他位置…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download to Another Location…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载到其他位置…"
+          }
+        }
+      }
+    },
+    "下载到原来的位置" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download to Original Location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载到原来的位置"
+          }
+        }
+      }
+    },
+    "下载到这里" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download Here"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载到这里"
+          }
+        }
+      }
+    },
+    "不知道「%@」对应的 GitHub 地址。请用「重新定位」选择文件夹。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The GitHub address of “%@” is unknown. Use Relocate… to choose its folder."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不知道「%@」对应的 GitHub 地址。请用「重新定位」选择文件夹。"
+          }
+        }
+      }
+    },
+    "从 GitHub 重新下载" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download Again from GitHub"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从 GitHub 重新下载"
+          }
+        }
+      }
+    },
+    "从 GitHub 重新下载「%@」" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download “%@” Again from GitHub"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从 GitHub 重新下载「%@」"
+          }
+        }
+      }
+    },
+    "已从 GitHub 重新下载 %@ 到 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloaded %1$@ again from GitHub to %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已从 GitHub 重新下载 %1$@ 到 %2$@"
+          }
+        }
+      }
+    },
+    "无法重新下载" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't Download Again"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法重新下载"
+          }
+        }
+      }
+    },
+    "正在从 GitHub 下载 %@ 到 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading %1$@ from GitHub to %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在从 GitHub 下载 %1$@ 到 %2$@"
+          }
+        }
+      }
+    },
+    "正在从 GitHub 下载…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading from GitHub…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在从 GitHub 下载…"
+          }
+        }
+      }
+    },
+    "选择放在哪个文件夹里，会在里面新建「%@」" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose where to put it. A folder named “%@” is created inside."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择放在哪个文件夹里，会在里面新建「%@」"
+          }
+        }
+      }
+    },
+    "重新下载" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download Again"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新下载"
+          }
+        }
+      }
+    },
+    " 等 %lld 项" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " and %lld more"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " 等 %lld 项"
+          }
+        }
+      }
+    },
+    "GitHub 上还没有这个仓库的内容，无法还原" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There's nothing on GitHub for this repository yet, so there's nothing to revert to"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub 上还没有这个仓库的内容，无法还原"
+          }
+        }
+      }
+    },
+    "全部还原为云端版本…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revert All to GitHub Version…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部还原为云端版本…"
+          }
+        }
+      }
+    },
+    "只在本机" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only on this Mac"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只在本机"
+          }
+        }
+      }
+    },
+    "只在本机、GitHub 上没有的文件保持不变：%@%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files only on this Mac, not on GitHub, were left as they are: %1$@%2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只在本机、GitHub 上没有的文件保持不变：%1$@%2$@"
+          }
+        }
+      }
+    },
+    "将 %lld 个文件还原为 GitHub 上的版本？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revert %lld files to their GitHub version?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将 %lld 个文件还原为 GitHub 上的版本？"
+          }
+        }
+      }
+    },
+    "将「%@」还原为 GitHub 上的版本？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revert “%@” to its GitHub version?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将「%@」还原为 GitHub 上的版本？"
+          }
+        }
+      }
+    },
+    "已修改" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edited"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已修改"
+          }
+        }
+      }
+    },
+    "已创建备份引用 %@，记录了还原前的本地内容。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Created backup ref %@ with the local content before the revert."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已创建备份引用 %@，记录了还原前的本地内容。"
+          }
+        }
+      }
+    },
+    "已删除" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleted"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已删除"
+          }
+        }
+      }
+    },
+    "开始将 %@ 中的 %@ 还原为 GitHub 上的版本" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reverting %2$@ in %1$@ to the GitHub version"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始将 %1$@ 中的 %2$@ 还原为 GitHub 上的版本"
+          }
+        }
+      }
+    },
+    "所选内容已经和 GitHub 上一致，无需还原。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The selection already matches GitHub; nothing to revert."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所选内容已经和 GitHub 上一致，无需还原。"
+          }
+        }
+      }
+    },
+    "未同步的修改" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unsynced Changes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未同步的修改"
+          }
+        }
+      }
+    },
+    "本机还没同步的修改会被丢弃，丢弃的内容会在本机保留一份备份。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changes not synced yet are discarded. A backup of them is kept on this Mac."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本机还没同步的修改会被丢弃，丢弃的内容会在本机保留一份备份。"
+          }
+        }
+      }
+    },
+    "查看" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看"
+          }
+        }
+      }
+    },
+    "查看还没同步的修改，可以还原为 GitHub 上的版本" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See changes not synced yet and revert them to the GitHub version"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看还没同步的修改，可以还原为 GitHub 上的版本"
+          }
+        }
+      }
+    },
+    "没有未同步的修改" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No unsynced changes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有未同步的修改"
+          }
+        }
+      }
+    },
+    "还原" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revert"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还原"
+          }
+        }
+      }
+    },
+    "还原为云端版本" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revert to GitHub Version"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还原为云端版本"
+          }
+        }
+      }
+    },
+    "还原为云端版本…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revert to GitHub Version…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还原为云端版本…"
+          }
+        }
+      }
+    },
+    "还原会丢弃本机还没同步的修改，换回 GitHub 上现在的内容；丢弃的内容会在本机保留一份备份。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reverting discards changes not synced yet and brings back what's on GitHub now. A backup of the discarded content is kept on this Mac."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还原会丢弃本机还没同步的修改，换回 GitHub 上现在的内容；丢弃的内容会在本机保留一份备份。"
+          }
+        }
+      }
+    },
+    "这个文件夹里还没同步的修改会被丢弃，换回 GitHub 上现在的内容。只在本机的新文件不受影响；丢弃的内容会在本机保留一份备份。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changes in this folder that aren't synced yet are discarded and replaced with what's on GitHub now. New files that exist only on this Mac are kept. A backup of the discarded content is kept on this Mac."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个文件夹里还没同步的修改会被丢弃，换回 GitHub 上现在的内容。只在本机的新文件不受影响；丢弃的内容会在本机保留一份备份。"
+          }
+        }
+      }
+    },
+    "这个文件还没同步的修改会被丢弃，换回 GitHub 上现在的内容。丢弃的内容会在本机保留一份备份。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changes to this file that aren't synced yet are discarded and replaced with what's on GitHub now. A backup of the discarded content is kept on this Mac."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个文件还没同步的修改会被丢弃，换回 GitHub 上现在的内容。丢弃的内容会在本机保留一份备份。"
+          }
+        }
+      }
+    },
+    "%@更新" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updated %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@更新"
+          }
+        }
+      }
+    },
+    "「%@」已存在且不是空的，请换一个位置。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” already exists and isn't empty. Choose another location."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」已存在且不是空的，请换一个位置。"
+          }
+        }
+      }
+    },
+    "下载" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载"
+          }
+        }
+      }
+    },
+    "下载到" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download to"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载到"
+          }
+        }
+      }
+    },
+    "下载后开启自动同步" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on Auto Sync after downloading"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载后开启自动同步"
+          }
+        }
+      }
+    },
+    "从 GitHub 下载" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download from GitHub"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从 GitHub 下载"
+          }
+        }
+      }
+    },
+    "从 GitHub 下载仓库" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download a Repository from GitHub"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从 GitHub 下载仓库"
+          }
+        }
+      }
+    },
+    "从 GitHub 下载仓库：选择 GitHub 上的仓库，下载到这台 Mac 并开始同步" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download from GitHub: choose a repository on GitHub, download it to this Mac and start syncing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从 GitHub 下载仓库：选择 GitHub 上的仓库，下载到这台 Mac 并开始同步"
+          }
+        }
+      }
+    },
+    "仓库会下载到这里的一个同名文件夹中" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The repository is downloaded into a folder with its name here"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仓库会下载到这里的一个同名文件夹中"
+          }
+        }
+      }
+    },
+    "公开仓库" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Public repository"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "公开仓库"
+          }
+        }
+      }
+    },
+    "已从 GitHub 下载 %@ 到 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloaded %1$@ from GitHub to %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已从 GitHub 下载 %1$@ 到 %2$@"
+          }
+        }
+      }
+    },
+    "已在列表中" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already in list"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在列表中"
+          }
+        }
+      }
+    },
+    "已归档" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archived"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已归档"
+          }
+        }
+      }
+    },
+    "已经在列表中：「%@」" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already in the list as “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已经在列表中：「%@」"
+          }
+        }
+      }
+    },
+    "搜索" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索"
+          }
+        }
+      }
+    },
+    "搜索仓库名或简介" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search names and descriptions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索仓库名或简介"
+          }
+        }
+      }
+    },
+    "无法读取 GitHub 上的仓库：%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't load your GitHub repositories: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法读取 GitHub 上的仓库：%@"
+          }
+        }
+      }
+    },
+    "更改…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更改…"
+          }
+        }
+      }
+    },
+    "正在下载…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在下载…"
+          }
+        }
+      }
+    },
+    "正在读取 GitHub 上的仓库…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading your GitHub repositories…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在读取 GitHub 上的仓库…"
+          }
+        }
+      }
+    },
+    "没有匹配的仓库" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No matching repositories"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有匹配的仓库"
+          }
+        }
+      }
+    },
+    "私有仓库" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Private repository"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "私有仓库"
+          }
+        }
+      }
+    },
+    "这个账号在 GitHub 上还没有仓库" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This account has no repositories on GitHub yet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个账号在 GitHub 上还没有仓库"
+          }
+        }
+      }
+    },
+    "选择" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择"
+          }
+        }
+      }
+    },
+    "选择 GitHub 上的一个仓库，下载到这台 Mac 并开始同步。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a repository on GitHub to download to this Mac and start syncing."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择 GitHub 上的一个仓库，下载到这台 Mac 并开始同步。"
+          }
+        }
+      }
+    },
+    "选择下载位置" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Download Location"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择下载位置"
+          }
+        }
+      }
+    },
+    "从 GitHub 下载…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download from GitHub…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从 GitHub 下载…"
+          }
+        }
+      }
+    },
+    "从 GitHub 下载…（需要先登录）" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download from GitHub… (sign in first)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从 GitHub 下载…（需要先登录）"
+          }
+        }
+      }
+    },
+    "全部同步" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync All"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部同步"
+          }
+        }
+      }
+    },
+    "每 %@ · 下次 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every %1$@ · next at %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每 %1$@ · 下次 %2$@"
+          }
+        }
+      }
+    },
+    "添加本地文件夹…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Local Folder…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加本地文件夹…"
+          }
+        }
+      }
+    },
+    "点击修改同步间隔" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click to change the sync interval"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击修改同步间隔"
+          }
+        }
+      }
+    },
+    "点击选择本地文件夹（也可以直接拖进窗口）；点箭头可从 GitHub 下载仓库" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click to choose a local folder (or drag one into the window); click the arrow to download a repository from GitHub"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击选择本地文件夹（也可以直接拖进窗口）；点箭头可从 GitHub 下载仓库"
+          }
+        }
+      }
+    },
+    "点击马上同步所有仓库（包括自动同步关闭的）；点箭头设置同步间隔" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click to sync every repository now (including those with Auto Sync off); click the arrow to set the sync interval"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击马上同步所有仓库（包括自动同步关闭的）；点箭头设置同步间隔"
+          }
+        }
+      }
+    },
+    "自定义：%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义：%@"
+          }
+        }
+      }
+    },
+    "%lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld/%2$lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "%lld 个仓库中有 %lld 个开启了自动同步" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%2$lld of %1$lld repositories have Auto Sync on"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld 个仓库中有 %2$lld 个开启了自动同步"
+          }
+        }
+      }
+    },
+    "关闭后所有仓库暂停自动同步" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn off to pause Auto Sync for every repository"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭后所有仓库暂停自动同步"
+          }
+        }
+      }
+    },
+    "打开后所有仓库开启自动同步，并马上同步一次" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on to enable Auto Sync for every repository and sync right away"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开后所有仓库开启自动同步，并马上同步一次"
+          }
+        }
+      }
+    },
+    "马上同步所有仓库，包括自动同步关闭的" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync every repository now, including those with Auto Sync off"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "马上同步所有仓库，包括自动同步关闭的"
+          }
+        }
+      }
+    },
+    "GitHub 上的仓库" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repositories on GitHub"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub 上的仓库"
+          }
+        }
+      }
+    },
+    "下载到这台 Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download to This Mac"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载到这台 Mac"
+          }
+        }
+      }
+    },
+    "下载到这台 Mac 开始同步，或删除不再需要的仓库。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download one to this Mac to start syncing, or delete ones you no longer need."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载到这台 Mac 开始同步，或删除不再需要的仓库。"
+          }
+        }
+      }
+    },
+    "不在本机" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not on this Mac"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不在本机"
+          }
+        }
+      }
+    },
+    "仓库里的所有文件和历史版本都会被删除，无法恢复。这台 Mac 上没有它的文件夹，删除后就再也找不回来了；如果还想保留，请先下载到这台 Mac。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All files and history in the repository are deleted and can't be recovered. There's no folder for it on this Mac, so it will be gone for good; to keep it, download it to this Mac first."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仓库里的所有文件和历史版本都会被删除，无法恢复。这台 Mac 上没有它的文件夹，删除后就再也找不回来了；如果还想保留，请先下载到这台 Mac。"
+          }
+        }
+      }
+    },
+    "使用 GitHub CLI 登录时，在终端执行下面的命令授权一次，然后回到这里再点删除。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you signed in with GitHub CLI, run the command below in Terminal once, then come back and click Delete again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用 GitHub CLI 登录时，在终端执行下面的命令授权一次，然后回到这里再点删除。"
+          }
+        }
+      }
+    },
+    "删除…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除…"
+          }
+        }
+      }
+    },
+    "在 GitHub 打开" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open on GitHub"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 GitHub 打开"
+          }
+        }
+      }
+    },
+    "已删除 GitHub 上的仓库 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleted the repository %@ on GitHub"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已删除 GitHub 上的仓库 %@"
+          }
+        }
+      }
+    },
+    "无法识别仓库名 %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the repository name %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法识别仓库名 %@"
+          }
+        }
+      }
+    },
+    "永久删除" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete Permanently"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "永久删除"
+          }
+        }
+      }
+    },
+    "永久删除 GitHub 上的「%@」？" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permanently delete “%@” on GitHub?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "永久删除 GitHub 上的「%@」？"
+          }
+        }
+      }
+    },
+    "永久删除 GitHub 上的这个仓库（列表中的仓库请在仓库页的「更多」里删除）" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permanently delete this repository on GitHub (for repositories in the list, use More on the repository page)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "永久删除 GitHub 上的这个仓库（列表中的仓库请在仓库页的「更多」里删除）"
+          }
+        }
+      }
+    },
+    "管理 GitHub 上的仓库…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage Repositories on GitHub…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "管理 GitHub 上的仓库…"
+          }
+        }
+      }
+    },
+    "请输入 %@ 确认删除：" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type %@ to confirm:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请输入 %@ 确认删除："
+          }
+        }
+      }
+    },
+    "这个仓库在列表中，请在它的仓库页「更多」菜单里删除。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This repository is in the list. Delete it from the More menu on its repository page."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个仓库在列表中，请在它的仓库页「更多」菜单里删除。"
+          }
+        }
+      }
+    },
+    "%@ 下载了新版本。如果文档正在 Word、Excel 或 PowerPoint 中打开，请关闭（不保存）后重新打开。要让 GitSync 自动刷新，请在「系统设置 › 隐私与安全性 › 自动化」中允许 GitSync 控制它们。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ downloaded new versions. If a document is open in Word, Excel or PowerPoint, close it without saving and open it again. To let GitSync refresh them for you, allow GitSync to control them in System Settings › Privacy & Security › Automation."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 下载了新版本。如果文档正在 Word、Excel 或 PowerPoint 中打开，请关闭（不保存）后重新打开。要让 GitSync 自动刷新，请在「系统设置 › 隐私与安全性 › 自动化」中允许 GitSync 控制它们。"
+          }
+        }
+      }
+    },
+    "%@ 没有保存出副本" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ didn't save the copy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 没有保存出副本"
+          }
+        }
+      }
+    },
+    "GitHub 上的新版本刚刚同步到这台 Mac。如果直接在 %@ 里保存，会用你打开时的旧内容覆盖新版本。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A newer version from GitHub was just synced to this Mac. Saving in %@ now would overwrite it with the content you opened."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub 上的新版本刚刚同步到这台 Mac。如果直接在 %@ 里保存，会用你打开时的旧内容覆盖新版本。"
+          }
+        }
+      }
+    },
+    "「%@」在 %@ 中仍是旧内容；保存前请先处理，否则会覆盖云端版本" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@” in %2$@ still shows the old content; deal with it before saving, or the GitHub version will be overwritten"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%1$@」在 %2$@ 中仍是旧内容；保存前请先处理，否则会覆盖云端版本"
+          }
+        }
+      }
+    },
+    "「%@」在 %@ 里有未保存的修改" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@” has unsaved changes in %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%1$@」在 %2$@ 里有未保存的修改"
+          }
+        }
+      }
+    },
+    "两个都保留" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep Both"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "两个都保留"
+          }
+        }
+      }
+    },
+    "你的修改已另存为「%@」，并打开了云端版本「%@」" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your changes were saved as “%1$@” and the GitHub version of “%2$@” was opened"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的修改已另存为「%1$@」，并打开了云端版本「%2$@」"
+          }
+        }
+      }
+    },
+    "刷新打开的文档" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh Open Documents"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刷新打开的文档"
+          }
+        }
+      }
+    },
+    "已丢弃 %@ 中未保存的修改，打开了云端版本「%@」" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discarded unsaved changes in %1$@ and opened the GitHub version of “%2$@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已丢弃 %1$@ 中未保存的修改，打开了云端版本「%2$@」"
+          }
+        }
+      }
+    },
+    "已在 %@ 中刷新" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refreshed in %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在 %@ 中刷新"
+          }
+        }
+      }
+    },
+    "已在 %@ 中刷新「%@」" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refreshed “%2$@” in %1$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已在 %1$@ 中刷新「%2$@」"
+          }
+        }
+      }
+    },
+    "我的修改" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "my changes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我的修改"
+          }
+        }
+      }
+    },
+    "我的修改 %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "my changes %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我的修改 %lld"
+          }
+        }
+      }
+    },
+    "无法刷新 Office 中打开的文档" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't Refresh Documents Open in Office"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法刷新 Office 中打开的文档"
+          }
+        }
+      }
+    },
+    "无法另存「%@」的修改：%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save the changes to “%1$@”: %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法另存「%1$@」的修改：%2$@"
+          }
+        }
+      }
+    },
+    "无法另存你的修改" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't Save Your Changes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法另存你的修改"
+          }
+        }
+      }
+    },
+    "无法在 %@ 中刷新「%@」：%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't refresh “%2$@” in %1$@: %3$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法在 %1$@ 中刷新「%2$@」：%3$@"
+          }
+        }
+      }
+    },
+    "没有控制 Office 的权限，无法刷新已打开的文档（%@）" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No permission to control Office, so open documents weren't refreshed (%@)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有控制 Office 的权限，无法刷新已打开的文档（%@）"
+          }
+        }
+      }
+    },
+    "没有控制权限" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not allowed to control the app"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有控制权限"
+          }
+        }
+      }
+    },
+    "用云端版本" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use GitHub Version"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用云端版本"
+          }
+        }
+      }
+    },
+    "稍后处理" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Later"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "稍后处理"
+          }
+        }
+      }
+    },
+    "请在 %@ 中用「文件 › 另存为」把修改存成另一个文件，再重新打开「%@」。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In %1$@, use File › Save As to save your changes as another file, then open “%2$@” again."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在 %1$@ 中用「文件 › 另存为」把修改存成另一个文件，再重新打开「%2$@」。"
+          }
+        }
+      }
+    },
+    "读取打开的文档失败：%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read the open documents: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读取打开的文档失败：%@"
+          }
+        }
+      }
+    },
+    "GitHub 登录已失效" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub sign-in expired"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub 登录已失效"
+          }
+        }
+      }
+    },
+    "已找到凭据，暂时无法验证" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Credentials found, can't verify right now"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已找到凭据，暂时无法验证"
+          }
+        }
+      }
+    },
+    "已通过 %@ 登录" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signed in with %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已通过 %@ 登录"
+          }
+        }
+      }
+    },
+    "正在检测登录状态…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking sign-in…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在检测登录状态…"
+          }
+        }
+      }
+    },
+    "登录" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign In"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登录"
+          }
+        }
+      }
+    },
+    "登录后才能同步" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to sync"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登录后才能同步"
+          }
+        }
+      }
+    },
+    "自动同步中" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto Sync On"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动同步中"
+          }
+        }
+      }
+    },
+    "已暂停" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已暂停"
+          }
+        }
+      }
+    },
+    "自动同步中，点击暂停" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto Sync is on. Click to pause"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动同步中，点击暂停"
+          }
+        }
+      }
+    },
+    "自动同步已暂停，点击开启" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto Sync is paused. Click to turn on"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动同步已暂停，点击开启"
+          }
+        }
+      }
+    },
+    "选择本地文件夹（也可以直接拖进窗口）" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a local folder (or drag one into the window)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择本地文件夹（也可以直接拖进窗口）"
+          }
+        }
+      }
+    },
+    "从 GitHub 下载或管理 GitHub 上的仓库" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download from GitHub or manage repositories on GitHub"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从 GitHub 下载或管理 GitHub 上的仓库"
+          }
+        }
+      }
+    },
+    "切换到 Office 时同步" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync on switching to Office"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切换到 Office 时同步"
           }
         }
       }

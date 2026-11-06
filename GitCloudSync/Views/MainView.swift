@@ -37,6 +37,7 @@ struct MainView: View {
             case .deleteRepository(let id, let github, let local): DeleteRepositoryView(repoID: id, deleteOnGitHub: github, deleteLocal: local)
             case .storage(let id): StorageView(repoID: id)
             case .deviceFlow: DeviceFlowView()
+            case .downloadFromGitHub: DownloadFromGitHubView()
             }
         }
         .alert(item: $model.alert) { alert in
@@ -45,25 +46,54 @@ struct MainView: View {
     }
 }
 
+/// The account at the bottom of the sidebar, like a small name card: the app icon stands in for
+/// an account picture, with a dot showing the sign-in state.
 struct AuthStatusLabel: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         let state = model.auth.state
-        HStack(spacing: 6) {
-            Circle()
-                .fill(color(for: state))
-                .frame(width: 7, height: 7)
-            Text(state.summary)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+        let (title, subtitle) = Self.lines(for: state)
+        HStack(spacing: 8) {
+            AppIconView(size: 28)
+                .overlay(alignment: .bottomTrailing) {
+                    Circle()
+                        .fill(color(for: state))
+                        .frame(width: 9, height: 9)
+                        .overlay(Circle().strokeBorder(Color(nsColor: .windowBackgroundColor), lineWidth: 1.5))
+                        .offset(x: 2, y: 2)
+                }
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.callout.weight(.semibold)).lineLimit(1)
+                Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
+            }
+            Spacer(minLength: 0)
             if !state.isUsable, state != .checking {
-                Button("登录 GitHub") { openSettings() }
+                Button("登录") { openSettings() }
                     .buttonStyle(.link)
                     .font(.caption)
             }
+        }
+        .help(state.summary)
+    }
+
+    private static func lines(for state: AuthState) -> (String, String) {
+        switch state {
+        case .signedIn(let login, let source):
+            let via = source == .githubCLI ? "GitHub CLI" : source.displayName
+            return (login, String(localized: "已通过 \(via) 登录"))
+        case .unverified:
+            return ("GitHub", String(localized: "已找到凭据，暂时无法验证"))
+        case .signedOut:
+            return (String(localized: "未登录 GitHub"), String(localized: "登录后才能同步"))
+        case .invalid(_, let message):
+            return (String(localized: "GitHub 登录已失效"), message)
+        case .checking:
+            return ("GitHub", String(localized: "正在检测登录状态…"))
+        case .unknown:
+            return ("GitHub", String(localized: "尚未检测"))
         }
     }
 

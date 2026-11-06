@@ -45,7 +45,8 @@ public struct GitClient: Sendable {
     }
 
     var environment: [String: String] {
-        var env = git.environment
+        // Read on every command so turning the proxy app on or off takes effect at the next sync.
+        var env = SystemProxy.applying(to: git.environment)
         if let credential {
             env[Self.tokenEnvKey] = credential.token
             env[Self.userEnvKey] = credential.username

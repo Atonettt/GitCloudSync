@@ -121,6 +121,92 @@ final class SyncEngineTests: XCTestCase {
         return local
     }
 
+    // MARK: Revert to the GitHub version
+
+    func testRevertToRemoteUndoesUnsyncedEditsAndDeletions() async throws {
+        try await sandbox.createRemote(seedFiles: ["docs/a.txt": "a\n", "docs/b.txt": "b\n", "c.txt": "c\n"])
+        let mac = try await sandbox.clone("mac")
+        try sandbox.write("broken\n", to: "docs/a.txt", in: mac)
+        try FileManager.default.removeItem(at: mac.appendingPathComponent("docs/b.txt"))
+        try sandbox.write("new\n", to: "docs/new.txt", in: mac)
+        try sandbox.write("c edited\n", to: "c.txt", in: mac)
+
+        let report = await sandbox.engine(for: mac).revertToRemote(paths: ["docs"])
+
+        XCTAssertEqual(report.summary?.restoredFiles, 2, report.debugText)
+        XCTAssertEqual(sandbox.read("docs/a.txt", in: mac), "a\n")
+        XCTAssertEqual(sandbox.read("docs/b.txt", in: mac), "b\n")
+        XCTAssertEqual(sandbox.read("docs/new.txt", in: mac), "new\n", "a file only on this Mac is kept")
+        XCTAssertEqual(sandbox.read("c.txt", in: mac), "c edited\n", "files outside the folder are untouched")
+        let log = try await sandbox.run(["log", "--oneline", "origin/main"], in: mac).stdout
+        XCTAssertEqual(log.split(separator: "\n").count, 1, "nothing was uploaded")
+
+        let backups = try await sandbox.run(["for-each-ref", "--format=%(refname)", "refs/gitcloud-sync/backup/"], in: mac).stdout
+        let ref = try XCTUnwrap(backups.split(separator: "\n").first.map(String.init))
+        let saved = try await sandbox.run(["show", "\(ref):docs/a.txt"], in: mac).stdout
+        XCTAssertEqual(saved, "broken\n", "the discarded edit is kept in the backup")
+    }
+
+    func testRevertToRemoteUsesNewestGitHubVersion() async throws {
+        try await sandbox.createRemote(seedFiles: ["a.txt": "v1\n"])
+        let mac = try await sandbox.clone("mac")
+        let other = try await sandbox.clone("other")
+        try await sandbox.commitAndPush(["a.txt": "v2 from the other Mac\n"], in: other)
+        try FileManager.default.removeItem(at: mac.appendingPathComponent("a.txt"))
+
+        let report = await sandbox.engine(for: mac).revertToRemote(paths: ["a.txt"])
+
+        XCTAssertEqual(report.summary?.restoredFiles, 1, report.debugText)
+        XCTAssertEqual(sandbox.read("a.txt", in: mac), "v2 from the other Mac\n")
+        let next = await sandbox.engine(for: mac).sync()
+        XCTAssertNil(next.failure, next.debugText)
+        XCTAssertEqual(sandbox.read("a.txt", in: mac), "v2 from the other Mac\n")
+        let remote = try await sandbox.remoteContent("a.txt")
+        XCTAssertEqual(remote, "v2 from the other Mac\n")
+    }
+
+    func testRevertToRemoteWithNothingToUndo() async throws {
+        try await sandbox.createRemote()
+        let mac = try await sandbox.clone("mac")
+        try sandbox.write("only here\n", to: "local.txt", in: mac)
+        let report = await sandbox.engine(for: mac).revertToRemote(paths: ["README.md", "local.txt"])
+        XCTAssertTrue(report.isNoChanges, report.debugText)
+        XCTAssertEqual(sandbox.read("local.txt", in: mac), "only here\n")
+    }
+
+    func testReportListsDownloadedFiles() async throws {
+        try await sandbox.createRemote(seedFiles: ["a.txt": "a\n", "b.txt": "b\n"])
+        let mac = try await sandbox.clone("mac")
+        let other = try await sandbox.clone("other")
+        try await sandbox.commitAndPush(["b.txt": "b changed\n", "new/c.txt": "c\n"], in: other)
+        try sandbox.write("a local\n", to: "a.txt", in: mac)
+
+        let report = await sandbox.engine(for: mac).sync()
+
+        XCTAssertNotNil(report.summary, report.debugText)
+        XCTAssertEqual(Set(report.downloadedFiles), ["b.txt", "new/c.txt"], "local edits are not counted as downloads")
+        let again = await sandbox.engine(for: mac).sync()
+        XCTAssertEqual(again.downloadedFiles, [])
+    }
+
+    func testRemoteHasNewCommitsDetectsPushesWithoutFetching() async throws {
+        try await sandbox.createRemote()
+        let mac = try await sandbox.clone("mac")
+        let other = try await sandbox.clone("other")
+        let inspector = RepositoryInspector(client: GitClient(repositoryURL: mac, git: sandbox.git))
+
+        let before = await inspector.remoteHasNewCommits()
+        XCTAssertFalse(before)
+        try await sandbox.commitAndPush(["a.txt": "from the cloud\n"], in: other)
+        let after = await inspector.remoteHasNewCommits()
+        XCTAssertTrue(after)
+        XCTAssertFalse(sandbox.exists("a.txt", in: mac), "the check downloads nothing")
+
+        _ = await sandbox.engine(for: mac).sync()
+        let synced = await inspector.remoteHasNewCommits()
+        XCTAssertFalse(synced)
+    }
+
     func testNonConflictingChangesOnBothSidesAreMerged() async throws {
         try await sandbox.createRemote(seedFiles: ["a.txt": "a\n", "b.txt": "b\n"])
         let mac = try await sandbox.clone("mac")

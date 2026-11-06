@@ -1,3 +1,4 @@
+import PDFKit
 import Quartz
 import SwiftUI
 import WebKit
@@ -9,21 +10,27 @@ import WebKit
 /// documents the page is zoomed to fill the pane's width instead (PDFs and images already fit).
 struct QuickLookView: NSViewRepresentable {
     let url: URL
+    /// Changes when the file on disk changes (for example after a sync downloaded a new version),
+    /// so the preview reloads instead of showing what Quick Look read the first time.
+    var revision: Date? = nil
 
     private static let pagedTypes: Set<String> = ["doc", "docx", "dot", "dotx", "rtf", "rtfd", "odt", "pages"]
 
     func makeNSView(context: Context) -> FitWidthPreviewView {
         let view = FitWidthPreviewView()
-        view.show(url, fitWidth: fitsWidth)
+        view.show(url, fitWidth: fitsWidth, revision: revision)
         return view
     }
 
     func updateNSView(_ view: FitWidthPreviewView, context: Context) {
-        view.show(url, fitWidth: fitsWidth)
+        view.show(url, fitWidth: fitsWidth, revision: revision)
     }
 
     static func dismantleNSView(_ view: FitWidthPreviewView, coordinator: ()) {
-        view.preview.close()
+        // Not `close()`: Quick Look asserts (and aborts the app) when a preview that never got
+        // activated — removed before it finished loading, or while its window was closing — is
+        // closed. Dropping the item releases the preview; the view itself closes with its window.
+        view.stop()
     }
 
     private var fitsWidth: Bool {
@@ -32,6 +39,7 @@ struct QuickLookView: NSViewRepresentable {
 }
 
 /// Hosts the Quick Look view and keeps a web-rendered document zoomed to the available width.
+/// PDFs are shown with PDFKit instead: Quick Look's embedded PDF view did not scroll here.
 final class FitWidthPreviewView: NSView {
     let preview: QLPreviewView = {
         let view = QLPreviewView(frame: .zero, style: .normal) ?? QLPreviewView()
@@ -40,7 +48,11 @@ final class FitWidthPreviewView: NSView {
         return view
     }()
 
+    /// Created the first time a PDF is shown.
+    private var pdfView: PDFView?
+
     private var url: URL?
+    private var revision: Date?
     private var fitWidth = false
     /// Width of the document page in CSS pixels, measured once it has loaded.
     private var contentWidth: CGFloat?
@@ -55,19 +67,62 @@ final class FitWidthPreviewView: NSView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
-    func show(_ url: URL, fitWidth: Bool) {
-        guard url != self.url || fitWidth != self.fitWidth else { return }
+    func stop() {
+        generation += 1          // cancels pending page measurements
+        url = nil
+        revision = nil
+        preview.previewItem = nil
+        pdfView?.document = nil
+    }
+
+    func show(_ url: URL, fitWidth: Bool, revision: Date? = nil) {
+        let sameFile = url == self.url && fitWidth == self.fitWidth
+        if sameFile, revision == self.revision { return }
+        let reload = sameFile && self.revision != nil
         self.url = url
         self.fitWidth = fitWidth
+        self.revision = revision
         contentWidth = nil
         generation += 1
-        preview.previewItem = url as NSURL
+        if url.pathExtension.lowercased() == "pdf" {
+            showPDF(url)
+            return
+        }
+        pdfView?.isHidden = true
+        preview.isHidden = false
+        if reload {
+            // Same file, new content: have Quick Look read it again.
+            preview.refreshPreviewItem()
+        } else {
+            preview.previewItem = url as NSURL
+        }
         if fitWidth { measure(generation: generation, attempt: 0) }
     }
 
     override func layout() {
         super.layout()
         applyZoom()
+    }
+
+    private func showPDF(_ url: URL) {
+        let view: PDFView
+        if let pdfView {
+            view = pdfView
+        } else {
+            view = PDFView(frame: bounds)
+            view.autoresizingMask = [.width, .height]
+            view.autoScales = true                         // fit the page width, follow resizing
+            view.displayMode = .singlePageContinuous       // scroll through all pages
+            view.displaysPageBreaks = true
+            view.backgroundColor = .clear
+            addSubview(view)
+            pdfView = view
+        }
+        preview.previewItem = nil
+        preview.isHidden = true
+        view.isHidden = false
+        view.document = PDFDocument(url: url)              // read again, so a downloaded version shows
+        view.autoScales = true
     }
 
     /// Quick Look loads the document asynchronously, so the page width is read a few times until

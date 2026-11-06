@@ -155,6 +155,58 @@ final class RepositoryCreatorTests: XCTestCase {
         XCTAssertEqual(origin.trimmingCharacters(in: .whitespacesAndNewlines), "https://example.invalid/other.git")
     }
 
+    // MARK: Download again
+
+    func testDownloadRestoresDeletedFolderAndKeepsSyncing() async throws {
+        try await sandbox.createRemote(seedFiles: ["笔记.md": "hello", "图片/a.txt": "a"])
+        let folder = sandbox.root.appendingPathComponent("deleted/研究资料")
+
+        try await creator.download(remoteURL: sandbox.bare.path, to: folder, credential: nil,
+                                   identity: GitIdentity(name: "Octo", email: "1+octo@users.noreply.github.com"),
+                                   ignorePatterns: IgnoreRules.defaultPatterns)
+
+        XCTAssertEqual(sandbox.read("笔记.md", in: folder), "hello")
+        XCTAssertEqual(sandbox.read("图片/a.txt", in: folder), "a")
+        let email = try await sandbox.run(["config", "--local", "user.email"], in: folder).stdout
+        XCTAssertEqual(email.trimmingCharacters(in: .whitespacesAndNewlines), "1+octo@users.noreply.github.com")
+        let leftovers = try FileManager.default.contentsOfDirectory(atPath: folder.deletingLastPathComponent().path)
+        XCTAssertEqual(leftovers, ["研究资料"], "the hidden download folder is gone")
+
+        try sandbox.write("new", to: "b.txt", in: folder)
+        let report = await sandbox.engine(for: folder).sync()
+        XCTAssertEqual(report.summary?.uploadedCommits, 1, report.debugText)
+    }
+
+    func testDownloadIntoEmptyFolderIsAllowed() async throws {
+        try await sandbox.createRemote()
+        let folder = try makeFolder("empty", files: [:])
+        try sandbox.write("", to: ".DS_Store", in: folder)
+        try await creator.download(remoteURL: sandbox.bare.path, to: folder, credential: nil, identity: nil, ignorePatterns: [])
+        XCTAssertTrue(sandbox.exists("README.md", in: folder))
+    }
+
+    func testDownloadNeverReplacesExistingFiles() async throws {
+        try await sandbox.createRemote()
+        let folder = try makeFolder("busy", files: ["keep.txt": "mine"])
+        do {
+            try await creator.download(remoteURL: sandbox.bare.path, to: folder, credential: nil, identity: nil, ignorePatterns: [])
+            XCTFail("a non-empty folder must not be replaced")
+        } catch {}
+        XCTAssertEqual(sandbox.read("keep.txt", in: folder), "mine")
+        XCTAssertFalse(sandbox.exists(".git", in: folder))
+    }
+
+    func testFailedDownloadLeavesNothingBehind() async throws {
+        let parent = try makeFolder("parent")
+        let folder = parent.appendingPathComponent("missing")
+        do {
+            try await creator.download(remoteURL: sandbox.root.appendingPathComponent("nope.git").path, to: folder,
+                                       credential: nil, identity: nil, ignorePatterns: [])
+            XCTFail("cloning a missing remote fails")
+        } catch {}
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: parent.path), [])
+    }
+
     func testRemoteIsEmpty() async throws {
         try await sandbox.createEmptyRemote()
         let folder = try makeFolder("plain")

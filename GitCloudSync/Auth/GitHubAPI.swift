@@ -20,6 +20,31 @@ struct CreatedRepository: Decodable, Sendable {
     }
 }
 
+/// One repository in the signed-in account's list.
+struct GitHubRepositorySummary: Decodable, Sendable, Hashable, Identifiable {
+    let id: Int
+    let name: String
+    let fullName: String
+    let isPrivate: Bool
+    let cloneURL: String
+    let htmlURL: URL
+    let description: String?
+    let pushedAt: Date?
+    /// Kilobytes, as GitHub reports it.
+    let size: Int
+    let isArchived: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, description, size
+        case fullName = "full_name"
+        case isPrivate = "private"
+        case cloneURL = "clone_url"
+        case htmlURL = "html_url"
+        case pushedAt = "pushed_at"
+        case isArchived = "archived"
+    }
+}
+
 enum GitHubAPIError: Error, LocalizedError {
     case unauthorized
     case nameTaken
@@ -144,6 +169,38 @@ enum GitHubAPI {
         case 404: throw GitHubAPIError.notFound
         default: throw GitHubAPIError.http(response.statusCode, String(decoding: data, as: UTF8.self))
         }
+    }
+
+    /// Repositories the account owns or collaborates on, most recently pushed first.
+    /// https://docs.github.com/rest/repos/repos#list-repositories-for-the-authenticated-user
+    static func listRepositories(token: String, maxPages: Int = 10) async throws -> [GitHubRepositorySummary] {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        var all: [GitHubRepositorySummary] = []
+        for page in 1...maxPages {
+            var components = URLComponents(string: "https://api.github.com/user/repos")!
+            components.queryItems = [
+                URLQueryItem(name: "per_page", value: "100"),
+                URLQueryItem(name: "page", value: String(page)),
+                URLQueryItem(name: "sort", value: "pushed"),
+                URLQueryItem(name: "affiliation", value: "owner,collaborator"),
+            ]
+            var request = URLRequest(url: components.url!)
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+            request.setValue("GitSync", forHTTPHeaderField: "User-Agent")
+            let (data, response) = try await perform(request)
+            switch response.statusCode {
+            case 200:
+                let batch = try decoder.decode([GitHubRepositorySummary].self, from: data)
+                all += batch
+                if batch.count < 100 { return all }
+            case 401: throw GitHubAPIError.unauthorized
+            default: throw GitHubAPIError.http(response.statusCode, String(decoding: data, as: UTF8.self))
+            }
+        }
+        return all
     }
 
     private static func repositoryRequest(token: String, owner: String, name: String) -> URLRequest {
