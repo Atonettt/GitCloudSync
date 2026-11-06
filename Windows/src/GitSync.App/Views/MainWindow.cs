@@ -79,12 +79,18 @@ public sealed class MainWindow : Window
         Native.SetForegroundWindow(hwnd);
     }
 
+    /// <summary>The last size and place, kept inside the screen's work area (small screens, unplugged monitors).</summary>
     void RestoreBounds()
     {
-        if (model.Settings.WindowBounds is { Length: 4 } b && b[2] > 600 && b[3] > 400)
-            AppWindow.MoveAndResize(new RectInt32(b[0], b[1], b[2], b[3]));
-        else
-            AppWindow.Resize(new SizeInt32(1180, 780));
+        var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+        var wanted = model.Settings.WindowBounds is { Length: 4 } b && b[2] > 600 && b[3] > 400
+            ? new RectInt32(b[0], b[1], b[2], b[3])
+            : new RectInt32(area.X + (area.Width - 1180) / 2, area.Y + (area.Height - 780) / 2, 1180, 780);
+        var width = Math.Min(wanted.Width, area.Width);
+        var height = Math.Min(wanted.Height, area.Height);
+        var x = Math.Clamp(wanted.X, area.X, area.X + area.Width - width);
+        var y = Math.Clamp(wanted.Y, area.Y, area.Y + area.Height - height);
+        AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
     }
 
     void SaveBounds()
