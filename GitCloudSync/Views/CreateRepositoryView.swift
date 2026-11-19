@@ -88,6 +88,7 @@ struct CreateRepositoryView: View {
                     .disabled(working)
                 Button("创建并同步") { Task { await create(linkExisting: false) } }
                     .buttonStyle(.borderedProminent)
+                    .hoverBrighten()
                     .keyboardShortcut(.defaultAction)
                     .disabled(working || !canCreate || nameProblem != nil || preview == nil || isBlocked)
             }

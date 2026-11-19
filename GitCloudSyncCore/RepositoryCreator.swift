@@ -193,6 +193,7 @@ public struct RepositoryCreator: Sendable {
         }
         if fm.fileExists(atPath: destination.path) { try fm.removeItem(at: destination) }
         try fm.moveItem(at: staging, to: destination)
+        Self.clearHiddenFlag(in: destination)
         try await prepare(folder: destination, remoteURL: remoteURL, identity: identity, ignorePatterns: ignorePatterns)
     }
 
@@ -207,6 +208,26 @@ public struct RepositoryCreator: Sendable {
     }
 
     // MARK: - Helpers
+
+    /// Files created inside a dot-folder (the download staging folder) can get the Finder "hidden"
+    /// flag on some volumes, e.g. an iCloud-managed Desktop, and keep it after the move. Clear it
+    /// on the folder and everything whose name does not start with a dot.
+    static func clearHiddenFlag(in folder: URL) {
+        func unhide(_ url: URL) {
+            guard !url.lastPathComponent.hasPrefix("."),
+                  (try? url.resourceValues(forKeys: [.isHiddenKey]).isHidden) == true else { return }
+            var url = url
+            var values = URLResourceValues()
+            values.isHidden = false
+            try? url.setResourceValues(values)
+        }
+        unhide(folder)
+        guard let items = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: [.isHiddenKey]) else { return }
+        for case let item as URL in items {
+            if item.lastPathComponent.hasPrefix(".") { items.skipDescendants(); continue }
+            unhide(item)
+        }
+    }
 
     /// The real path with symlinks resolved (/var → /private/var), for comparing with git's output.
     static func canonicalPath(_ path: String) -> String {

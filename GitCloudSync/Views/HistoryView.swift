@@ -1,8 +1,8 @@
 import QuickLook
 import SwiftUI
 
-/// Version history in its own window, laid out like Mail: a list on the left, its items in the
-/// middle, and a live preview of the selected file on the right.
+/// Version history, shown in the main window in place of the repository browser. Laid out like
+/// Mail: a list on the left, its items in the middle, and a live preview of the selected file on the right.
 struct HistoryView: View {
     @Environment(AppModel.self) private var model
     let repoID: UUID
@@ -44,14 +44,17 @@ struct HistoryView: View {
                 columns
             }
         }
-        .frame(minWidth: 1060, minHeight: 600)
-        .navigationTitle("\(repo?.displayName ?? "") · 版本历史")
+        .frame(minWidth: 900, minHeight: 560)
+        // Short enough to fit the middle column's title bar; the repository name would run across
+        // the column divider. The back button names the repository instead.
+        .navigationTitle("版本历史")
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Picker("", selection: $mode) {
                     ForEach(Mode.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
+                .hoverControl()
                 .labelsHidden()
                 .fixedSize()
             }
@@ -89,7 +92,7 @@ struct HistoryView: View {
 
 // MARK: - Shared pieces
 
-/// What a version-history window shows: a repository, optionally starting on one file.
+/// What version history shows: a repository, optionally starting on one file.
 struct HistoryRequest: Codable, Hashable {
     var repoID: UUID
     var path: String?
@@ -117,7 +120,8 @@ struct PreviewActions {
     let fail: (String) -> Void
 }
 
-private enum HistoryFormat {
+/// Date, size and name formatting shared by version history and the Files preview.
+enum HistoryFormat {
     static func date(_ date: Date) -> String {
         date.formatted(.dateTime.year().month().day().hour().minute())
     }
@@ -224,10 +228,18 @@ private struct HistoryColumns<Sidebar: View, Content: View>: View {
             sidebar
                 .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 300)
         } content: {
+            // Same frosted backdrop as the repository detail, so history matches the rest of the window.
             content
+                .scrollContentBackground(.hidden)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background { GlassBackdrop() }
                 .navigationSplitViewColumnWidth(min: 240, ideal: 270, max: 400)
         } detail: {
             FilePreviewPane(repoID: repoID, target: preview, actions: actions)
+                .scrollContentBackground(.hidden)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background { GlassBackdrop() }
+                .modifier(TransparentToolbar())
         }
         .searchable(text: $search, placement: .sidebar, prompt: Text(searchPrompt))
     }
@@ -246,9 +258,30 @@ private struct FilePreviewPane: View {
     @State private var url: URL?
     @State private var loading = false
     @State private var failure: String?
-    /// Show what changed against the version before, instead of the file itself.
+    /// Show what changed against another version, instead of the file itself.
     @AppStorage("history.compare") private var comparing = false
-    @State private var previous: (url: URL?, date: Date?)?
+    /// Which version to compare against: the sync point right before, or any version of the file.
+    @State private var baseChoice: BaseChoice = .previous
+    /// Every version of the selected file, offered as comparison bases.
+    @State private var fileVersions: [FileVersion] = []
+    /// The two files to compare (earlier first) and how to describe them.
+    @State private var baseline: Baseline?
+    /// Why the other version could not be loaded; shown instead of a misleading comparison.
+    @State private var baselineError: String?
+    /// Bumped by "重试" to run the comparison again.
+    @State private var baselineAttempt = 0
+
+    enum BaseChoice: Hashable {
+        case previous
+        /// A `FileVersion.id`.
+        case version(String)
+    }
+
+    struct Baseline {
+        var old: URL?
+        var new: URL?
+        var caption: String
+    }
 
     var body: some View {
         Group {
@@ -256,15 +289,28 @@ private struct FilePreviewPane: View {
                 VStack(spacing: 0) {
                     header(target)
                     Divider()
-                    ZStack {
-                        if comparing, let url {
-                            if let previous {
-                                VersionComparisonView(old: previous.url, new: url,
-                                                      kind: (target.path as NSString).pathExtension,
-                                                      caption: previousCaption(previous.date))
-                            } else {
-                                ProgressView()
+                    ZStack(alignment: .top) {
+                        if comparing, url != nil {
+                            VStack(spacing: 0) {
+                                basePicker(target)
+                                Divider()
+                                if let baselineError {
+                                    ContentUnavailableView {
+                                        Label("无法对比", systemImage: "exclamationmark.triangle")
+                                    } description: {
+                                        Text(baselineError)
+                                    } actions: {
+                                        Button("重试") { baselineAttempt += 1 }
+                                    }
+                                } else if let baseline {
+                                    VersionComparisonView(old: baseline.old, new: baseline.new,
+                                                          kind: (target.path as NSString).pathExtension,
+                                                          caption: baseline.caption)
+                                } else {
+                                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                                }
                             }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         } else if let url {
                             QuickLookView(url: url)
                         } else if loading {
@@ -281,7 +327,51 @@ private struct FilePreviewPane: View {
             }
         }
         .task(id: target?.id) { await load(target) }
-        .task(id: "\(target?.id ?? "")|\(comparing)") { await loadPrevious(target) }
+        .task(id: "\(target?.restorePath ?? "")|\(comparing)") { await loadFileVersions(target) }
+        .task(id: "\(target?.id ?? "")|\(url?.path ?? "")|\(comparing)|\(baseChoice)|\(baselineAttempt)") { await loadBaseline(target) }
+        .onChange(of: target?.restorePath) { baseChoice = .previous }
+        .onChange(of: target?.id) {
+            // Comparing a version with itself shows nothing; fall back to the one before.
+            if case .version(let id) = baseChoice, id == target?.id { baseChoice = .previous }
+        }
+    }
+
+    /// "与 [上一个时间节点 ▾] 对比": pick any version of this file as the other side.
+    private func basePicker(_ target: PreviewTarget) -> some View {
+        HStack(spacing: 8) {
+            Text("对比对象").font(.callout).foregroundStyle(.secondary).fixedSize()
+            Picker("对比对象", selection: $baseChoice) {
+                Text("上一个时间节点").tag(BaseChoice.previous)
+                let others = fileVersions.filter { !$0.isDeletion && $0.id != target.id }
+                if !others.isEmpty {
+                    Divider()
+                    ForEach(others) { version in
+                        Text(versionTitle(version)).tag(BaseChoice.version(version.id))
+                    }
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .hoverControl()
+            // A menu picker is as wide as its longest item; long version titles would push the whole
+            // window wider than it is. Cap it so the title truncates instead.
+            .frame(minWidth: 140, maxWidth: 320, alignment: .leading)
+            .layoutPriority(-1)
+            .help("选择要和当前选中版本对比的另一个版本，较早的作为旧版本、较新的作为新版本")
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+    }
+
+    private func versionTitle(_ version: FileVersion) -> String {
+        let latest = version.id == fileVersions.first(where: { !$0.isDeletion })?.id
+        var parts = ["\(HistoryFormat.relative(version.commit.date))", version.commit.source]
+        if latest { parts.append(String(localized: "最新同步版本")) }
+        if let target, version.path != target.path {
+            parts.append(String(localized: "当时名为「\(HistoryFormat.fileName(version.path))」"))
+        }
+        return parts.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     private func previousCaption(_ date: Date?) -> String {
@@ -289,65 +379,124 @@ private struct FilePreviewPane: View {
         return String(localized: "与上一个时间节点（\(date.formatted(date: .abbreviated, time: .shortened))）相比")
     }
 
-    private func loadPrevious(_ target: PreviewTarget?) async {
-        previous = nil
-        guard comparing, let target, let browser = model.historyBrowser(repoID) else { return }
+    private func loadFileVersions(_ target: PreviewTarget?) async {
+        guard comparing, let target, let browser = model.historyBrowser(repoID) else {
+            fileVersions = []
+            return
+        }
+        let path = target.restorePath
+        let loaded = (try? await browser.versions(of: path)) ?? []
+        guard !Task.isCancelled else { return }
+        fileVersions = loaded
+        if case .version(let id) = baseChoice, !loaded.contains(where: { $0.id == id }) { baseChoice = .previous }
+    }
+
+    private func loadBaseline(_ target: PreviewTarget?) async {
+        baseline = nil
+        baselineError = nil
+        guard comparing, let target, let url, let browser = model.historyBrowser(repoID) else { return }
         do {
-            // Always the sync point right before this one, even if this file didn't change in it.
-            if let point = try await browser.previousSyncPoint(before: target.commit, path: target.path) {
-                let file = point.hasFile
-                    ? try await browser.exportForPreview(path: target.path, commit: point.commit, date: point.date) : nil
-                previous = (file, point.date)
-            } else {
-                previous = (nil, nil)
+            switch baseChoice {
+            case .previous:
+                // Always the sync point right before this one, even if this file didn't change in it.
+                if let point = try await browser.previousSyncPoint(before: target.commit, path: target.path) {
+                    let file = point.hasFile
+                        ? try await browser.exportForPreview(path: target.path, commit: point.commit, date: point.date) : nil
+                    guard !Task.isCancelled else { return }
+                    baseline = Baseline(old: file, new: url, caption: previousCaption(point.date))
+                } else {
+                    guard !Task.isCancelled else { return }
+                    baseline = Baseline(old: nil, new: url, caption: previousCaption(nil))
+                }
+            case .version(let id):
+                guard let version = fileVersions.first(where: { $0.id == id }) else {
+                    baseChoice = .previous
+                    return
+                }
+                let file = try await browser.exportForPreview(path: version.path, commit: version.commit.id,
+                                                              date: version.commit.date)
+                guard !Task.isCancelled else { return }
+                let when = HistoryFormat.relative(version.commit.date)
+                // Always earlier → later, so red is what was removed over time and green what was added.
+                baseline = version.commit.date <= target.date
+                    ? Baseline(old: file, new: url, caption: String(localized: "与 \(when) 的版本相比"))
+                    : Baseline(old: url, new: file, caption: String(localized: "从这个版本到 \(when) 的版本，改了哪些地方"))
             }
         } catch {
-            previous = (nil, nil)
+            // Not "no earlier version": that would wrongly call an existing file newly added.
+            guard !Task.isCancelled else { return }
+            baselineError = HistoryFormat.describe(error)
         }
     }
 
+    /// One row when the pane is wide; when narrow, the file name gets its own line above the controls
+    /// so neither the name nor the buttons are squeezed.
     private func header(_ target: PreviewTarget) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                headerTitle(target)
+                    .frame(minWidth: 180, alignment: .leading)
+                Spacer(minLength: 8)
+                headerControls(target)
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                headerTitle(target)
+                HStack(spacing: 12) {
+                    headerControls(target)
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    private func headerTitle(_ target: PreviewTarget) -> some View {
         HStack(spacing: 12) {
             Image(systemName: HistoryFormat.symbol(for: target.path)).font(.title2).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(HistoryFormat.fileName(target.path)).font(.headline).lineLimit(1).truncationMode(.middle)
                 Text(target.subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
             }
-            Spacer(minLength: 8)
-            Picker("显示", selection: $comparing) {
-                Text("预览").tag(false)
-                Text("对比上一版本").tag(true)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            .help("对比上一版本：标出这个版本相对上一个版本改了哪些地方")
-            Button {
-                if let url { actions.openInQuickLook(url) }
-            } label: {
-                Label("快速查看", systemImage: "eye").labelStyle(.iconOnly)
-            }
-            .disabled(url == nil)
-            .help("用快速查看全屏打开这个版本")
-            Button {
-                Task {
-                    await model.saveVersionCopy(repoID, path: target.path, commit: target.commit, date: target.date,
-                                                besides: target.restorePath)
-                }
-            } label: {
-                Label("另存副本", systemImage: "plus.square.on.square").labelStyle(.iconOnly)
-            }
-            .help("另存为「文件名 (日期 版本)」，当前文件不变")
-            Button(target.restoreTitle) {
-                actions.restore(FileRestoreRequest(path: target.restorePath, sourcePath: target.path,
-                                                   commit: target.commit, date: target.date))
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(target.restoreDisabledReason != nil)
-            .help(target.restoreDisabledReason ?? String(localized: "把这个文件恢复为这个版本"))
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+    }
+
+    @ViewBuilder
+    private func headerControls(_ target: PreviewTarget) -> some View {
+        Picker("显示", selection: $comparing) {
+            Text("预览").tag(false)
+            Text("对比版本").tag(true)
+        }
+        .pickerStyle(.segmented)
+        .hoverControl()
+        .labelsHidden()
+        .fixedSize()
+        .help("对比版本：标出这个版本和另一个版本（默认是上一个）之间改了哪些地方")
+        Button {
+            if let url { actions.openInQuickLook(url) }
+        } label: {
+            Label("快速查看", systemImage: "eye").labelStyle(.iconOnly)
+        }
+        .disabled(url == nil)
+        .help("用快速查看全屏打开这个版本")
+        Button {
+            Task {
+                await model.saveVersionCopy(repoID, path: target.path, commit: target.commit, date: target.date,
+                                            besides: target.restorePath)
+            }
+        } label: {
+            Label("另存副本", systemImage: "plus.square.on.square").labelStyle(.iconOnly)
+        }
+        .help("另存为「文件名 (日期 版本)」，当前文件不变")
+        Button(target.restoreTitle) {
+            actions.restore(FileRestoreRequest(path: target.restorePath, sourcePath: target.path,
+                                               commit: target.commit, date: target.date))
+        }
+        .buttonStyle(.borderedProminent)
+        .hoverBrighten()
+        .fixedSize()
+        .disabled(target.restoreDisabledReason != nil)
+        .help(target.restoreDisabledReason ?? String(localized: "把这个文件恢复为这个版本"))
     }
 
     private func load(_ target: PreviewTarget?) async {
@@ -355,10 +504,15 @@ private struct FilePreviewPane: View {
         failure = nil
         guard let target, let browser = model.historyBrowser(repoID) else { return }
         loading = true
-        defer { loading = false }
+        // A cancelled load leaves the spinner to the load that replaced it.
+        defer { if !Task.isCancelled { loading = false } }
+        // A newer selection cancels this load; don't let a slow export overwrite what replaced it.
         do {
-            url = try await browser.exportForPreview(path: target.path, commit: target.commit, date: target.date)
+            let exported = try await browser.exportForPreview(path: target.path, commit: target.commit, date: target.date)
+            guard !Task.isCancelled else { return }
+            url = exported
         } catch {
+            guard !Task.isCancelled else { return }
             failure = HistoryFormat.describe(error)
         }
     }
@@ -473,6 +627,7 @@ private struct TimelineColumns: View {
                                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                             }
                             .padding(.vertical, 2)
+                            .hoverRow()
                             .tag(commit.id)
                         }
                     }
@@ -480,6 +635,7 @@ private struct TimelineColumns: View {
                 if canLoadMore, search.isEmpty {
                     Button("加载更早的记录") { Task { await load(more: true) } }
                         .buttonStyle(.link)
+                        .hoverHighlight()
                 }
             }
             .listStyle(.sidebar)
@@ -578,6 +734,7 @@ private struct TimelineColumns: View {
                 Text("全部文件").tag(Scope.all)
             }
             .pickerStyle(.segmented)
+            .hoverControl()
             .labelsHidden()
             if scope == .all {
                 TextField("筛选文件", text: $fileFilter).textFieldStyle(.roundedBorder)
@@ -592,14 +749,14 @@ private struct TimelineColumns: View {
             List(commit.changes, id: \.path, selection: $selectedPath) { change in
                 var detail = change.displayStatus
                 if let old = change.oldPath { detail += String(localized: " · 原名「\(HistoryFormat.fileName(old))」") }
-                return FileLabel(path: change.path, detail: detail).tag(change.path)
+                return FileLabel(path: change.path, detail: detail).hoverRow().tag(change.path)
             }
             .overlay { if commit.changes.isEmpty { Text("这个版本没有文件变化").foregroundStyle(.secondary) } }
         case .all:
             let query = fileFilter.trimmingCharacters(in: .whitespaces)
             let files = query.isEmpty ? allFiles : allFiles.filter { $0.localizedCaseInsensitiveContains(query) }
             List(files, id: \.self, selection: $selectedPath) { path in
-                FileLabel(path: path).tag(path)
+                FileLabel(path: path).hoverRow().tag(path)
             }
             .overlay { if allFiles.isEmpty { ProgressView() } }
         }
@@ -694,7 +851,7 @@ private struct FilesColumns: View {
         HistoryColumns(search: $search, searchPrompt: String(localized: "搜索文件"), preview: preview,
                        repoID: repoID, actions: actions) {
             List(filteredFiles, id: \.self, selection: $selectedFile) { path in
-                FileLabel(path: path).tag(path)
+                FileLabel(path: path).hoverRow().tag(path)
             }
             .listStyle(.sidebar)
             .overlay {
@@ -712,7 +869,7 @@ private struct FilesColumns: View {
                     .padding(14)
                     List(selection: $selectedVersion) {
                         ForEach(Array(versions.enumerated()), id: \.element.id) { index, version in
-                            versionRow(version, isLatest: index == 0)
+                            versionRow(version, isLatest: index == 0).hoverRow()
                         }
                     }
                     .overlay {
@@ -837,7 +994,7 @@ private struct DeletedColumns: View {
         HistoryColumns(search: $search, searchPrompt: String(localized: "搜索文件"), preview: preview,
                        repoID: repoID, actions: actions) {
             List(filtered, selection: $selection) { file in
-                FileLabel(path: file.path, detail: String(localized: "\(HistoryFormat.relative(file.deletedIn.date)) 删除")).tag(file.id)
+                FileLabel(path: file.path, detail: String(localized: "\(HistoryFormat.relative(file.deletedIn.date)) 删除")).hoverRow().tag(file.id)
             }
             .listStyle(.sidebar)
             .overlay {
@@ -942,6 +1099,7 @@ private struct RepositoryRestoreConfirmView: View {
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
+                .hoverBrighten()
             }
         }
         .padding(20)

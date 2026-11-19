@@ -3,11 +3,42 @@ import SwiftUI
 struct MainView: View {
     @Environment(AppModel.self) private var model
     @State private var dropTargeted = false
+    @State private var showCommandBar = false
 
     var body: some View {
         @Bindable var model = model
-        RepositoryBrowser()
-            .frame(minWidth: 860, minHeight: 560)
+        // A ZStack, not a Group: modifiers on a Group (like onDisappear below) would apply to each
+        // branch and fire whenever history opens or closes.
+        ZStack {
+            if let request = model.historyRequest {
+                // Version history replaces the browser in this window; "返回" goes back.
+                HistoryView(request: request)
+                    .id(request)
+                    .toolbar {
+                        ToolbarItem(placement: .navigation) {
+                            Button {
+                                model.historyRequest = nil
+                            } label: {
+                                Label("返回", systemImage: "chevron.backward")
+                            }
+                            .keyboardShortcut("[", modifiers: .command)
+                            .help("返回「\(model.repository(request.repoID)?.displayName ?? "")」（⌘[）")
+                        }
+                    }
+            } else {
+                RepositoryBrowser()
+            }
+        }
+        .frame(minWidth: 860, minHeight: 560)
+        // Closing the window ends version history, so reopening it shows the repositories again.
+        .onDisappear { model.historyRequest = nil }
+        // ⌘K: the glass command bar to jump to a repository or run an action.
+        .onReceive(NotificationCenter.default.publisher(for: .toggleCommandBar)) { _ in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { showCommandBar.toggle() }
+        }
+        .overlay {
+            if showCommandBar { CommandBar(isPresented: $showCommandBar) }
+        }
         .overlay {
             if dropTargeted {
                 RoundedRectangle(cornerRadius: 14)
@@ -73,6 +104,7 @@ struct AuthStatusLabel: View {
             if !state.isUsable, state != .checking {
                 Button("登录") { openSettings() }
                     .buttonStyle(.link)
+                    .hoverHighlight()
                     .font(.caption)
             }
         }
@@ -121,6 +153,7 @@ struct EmptyRepositoriesView: View {
                 .foregroundStyle(.secondary)
             Button("添加仓库…") { RepositoryPicker.present(model: model) }
                 .buttonStyle(.borderedProminent)
+                .hoverBrighten()
                 .disabled(model.gitEnvironment == nil)
         }
         .frame(maxWidth: .infinity)

@@ -119,7 +119,7 @@ private struct TextComparison: View {
             Divider()
             if summary.total == 0 {
                 ContentUnavailableView("没有改动", systemImage: "equal.circle",
-                                       description: Text("文字和上一个时间节点完全一样。如果文件确实改过，可能只改了格式、图片等无法比较文字的地方。"))
+                                       description: Text("文字和对比的版本完全一样。如果文件确实改过，可能只改了格式、图片等无法比较文字的地方。"))
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -138,6 +138,7 @@ private struct TextComparison: View {
                                             .background(Color.primary.opacity(0.04))
                                     }
                                     .buttonStyle(.plain)
+                                    .hoverHighlight(cornerRadius: 0, inset: 0)
                                 }
                             }
                         }
@@ -198,45 +199,83 @@ private struct TextComparison: View {
 private struct LineRow: View {
     let line: TextDiff.Line
 
-    var body: some View {
-        switch line {
-        case .same(let text):
-            row(Text(text.isEmpty ? " " : text), marker: " ", tint: nil)
-        case .added(let text):
-            row(Text(text.isEmpty ? " " : text), marker: "+", tint: .green)
-        case .removed(let text):
-            row(Text(text.isEmpty ? " " : text).strikethrough(color: .red.opacity(0.6)), marker: "−", tint: .red)
-        case .changed(let old, let new):
-            VStack(spacing: 0) {
-                row(Text(attributed(old, color: .red, strike: true)), marker: "−", tint: .red, faint: true)
-                row(Text(attributed(new, color: .green, strike: false)), marker: "+", tint: .green, faint: true)
+    /// How a row is marked: a coloured bar on the left, a word label, and a tinted background.
+    private enum Kind {
+        case same, added, removed, before, after
+
+        var tint: Color? {
+            switch self {
+            case .same: nil
+            case .added, .after: .green
+            case .removed, .before: .red
+            }
+        }
+
+        var label: String {
+            switch self {
+            case .same: ""
+            case .added: String(localized: "新增")
+            case .removed: String(localized: "删除")
+            case .before: String(localized: "原来")
+            case .after: String(localized: "改为")
             }
         }
     }
 
-    private func row(_ text: Text, marker: String, tint: Color?, faint: Bool = false) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(marker)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .foregroundStyle(tint ?? .secondary)
-                .frame(width: 12)
+    var body: some View {
+        switch line {
+        case .same(let text):
+            row(Text(text.isEmpty ? " " : text), kind: .same)
+        case .added(let text):
+            row(Text(text.isEmpty ? " " : text), kind: .added)
+        case .removed(let text):
+            row(Text(text.isEmpty ? " " : text).strikethrough(color: .red.opacity(0.7)).foregroundStyle(.secondary),
+                kind: .removed)
+        case .changed(let old, let new):
+            VStack(spacing: 0) {
+                row(Text(attributed(old, color: .red, removed: true)), kind: .before)
+                row(Text(attributed(new, color: .green, removed: false)), kind: .after)
+            }
+        }
+    }
+
+    private func row(_ text: Text, kind: Kind) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(kind.label)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(kind.tint ?? .clear)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background((kind.tint ?? .clear).opacity(0.22), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .frame(width: 36)
             text
                 .font(.system(size: 13))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 2)
-        .background(tint.map { $0.opacity(faint ? 0.06 : 0.12) } ?? Color.clear)
+        .padding(.leading, 10)
+        .padding(.trailing, 12)
+        .padding(.vertical, 4)
+        .background((kind.tint ?? .clear).opacity(0.16))
+        .overlay(alignment: .leading) {
+            if let tint = kind.tint { Rectangle().fill(tint).frame(width: 3) }
+        }
     }
 
-    private func attributed(_ segments: [TextDiff.Segment], color: Color, strike: Bool) -> AttributedString {
+    /// Only the words that actually changed stand out: a solid highlight, underlined so even a
+    /// single punctuation mark is easy to spot, and struck through on the old side. The rest of
+    /// the old paragraph is dimmed so the eye goes to the new text.
+    private func attributed(_ segments: [TextDiff.Segment], color: Color, removed: Bool) -> AttributedString {
         var result = AttributedString()
         for segment in segments {
             var part = AttributedString(segment.text)
             if segment.changed {
-                part.backgroundColor = color.opacity(0.3)
-                if strike { part.strikethroughStyle = .single }
+                part.backgroundColor = color.opacity(0.55)
+                part.foregroundColor = .primary
+                part.underlineStyle = Text.LineStyle(pattern: .solid, color: color)
+                if removed { part.strikethroughStyle = .single }
+            } else if removed {
+                part.foregroundColor = .secondary
             }
             result += part
         }

@@ -18,7 +18,7 @@ struct RepositoryDetailView: View {
         let status = model.displayStatus(for: repo)
         let syncing = runtime?.isSyncing == true
 
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             header(status: status, phase: runtime?.phase, info: info)
 
             if repo.lastStatus == .conflict, !repo.conflictFiles.isEmpty, !syncing {
@@ -52,8 +52,7 @@ struct RepositoryDetailView: View {
             // The folder itself fills the rest: browse it and preview files.
             RepositoryFilesView(repo: repo)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.primary.opacity(0.1)))
+                .padding(.top, 4)
         }
         .padding(.horizontal, 20)
         .padding(.top, 10)
@@ -88,6 +87,7 @@ struct RepositoryDetailView: View {
                         Image(systemName: "info.circle").foregroundStyle(.secondary)
                     }
                     .buttonStyle(.borderless)
+                    .hoverHighlight()
                     .focusEffectDisabled()
                     .help("详细信息：路径、远程地址、分支")
                     .popover(isPresented: $showDetails, arrowEdge: .bottom) {
@@ -103,11 +103,11 @@ struct RepositoryDetailView: View {
                 HStack(spacing: 6) {
                     StatusBadge(status: status)
                     if let phase {
-                        Text(phase.displayName).font(.caption).foregroundStyle(.secondary)
+                        Text(phase.displayName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     } else if !repo.autoSyncEnabled {
-                        Text("自动同步已关闭").font(.caption).foregroundStyle(.secondary)
+                        Text("自动同步已关闭").font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     } else if repo.pausedForConflict {
-                        Text("因冲突暂停").font(.caption).foregroundStyle(.orange)
+                        Text("因冲突暂停").font(.caption).foregroundStyle(.orange).lineLimit(1)
                     }
                 }
             }
@@ -122,6 +122,7 @@ struct RepositoryDetailView: View {
                 .controlSize(.small)
                 .tint(.green)   // green "on", so it isn't mistaken for the button next to it
                 .help("打开后立即同步一次，之后按间隔自动同步")
+                SyncIntervalMenu()
                 Divider().frame(height: 20)
                 Button {
                     model.sync(repo.id, trigger: .manualSingle)
@@ -132,9 +133,12 @@ struct RepositoryDetailView: View {
                         Label("立即同步", systemImage: "arrow.triangle.2.circlepath")
                     }
                 }
+                .glassButton(prominent: true)
                 .disabled(model.runtime[repo.id]?.isSyncing == true || model.gitEnvironment == nil)
                 .help("马上同步这个仓库")
             }
+            // The controls keep their full size; the name and status on the left truncate instead.
+            .fixedSize()
         }
     }
 
@@ -154,6 +158,7 @@ struct RepositoryDetailView: View {
                     Label("同步记录", systemImage: "clock")
                 }
                 .buttonStyle(.borderless)
+                .hoverHighlight()
                 .foregroundStyle(Color.accentColor)   // the tile's grey detail style would hide that it's clickable
                 .fixedSize()
                 .help("最近的同步记录")
@@ -190,6 +195,7 @@ struct RepositoryDetailView: View {
                             Label("查看", systemImage: "list.bullet")
                         }
                         .buttonStyle(.borderless)
+                        .hoverHighlight()
                         .foregroundStyle(Color.accentColor)
                         .fixedSize()
                         .help("查看还没同步的修改，可以还原为 GitHub 上的版本")
@@ -218,6 +224,7 @@ struct RepositoryDetailView: View {
                     Text("历史 \(ByteCountFormatter.string(fromByteCount: usage.historyBytes, countStyle: .file))")
                     Button("详情") { model.activeSheet = .storage(repo.id) }
                         .buttonStyle(.borderless)
+                        .hoverHighlight()
                         .foregroundStyle(Color.accentColor)
                 }
             }
@@ -227,11 +234,11 @@ struct RepositoryDetailView: View {
     private func actions(info: RepositoryInfo?, syncing: Bool) -> some View {
         HStack(spacing: 8) {
             Button {
-                NSApp.activate(ignoringOtherApps: true)
-                openWindow(id: WindowID.history, value: HistoryRequest(repoID: repo.id))
+                model.historyRequest = HistoryRequest(repoID: repo.id)
             } label: {
                 Label("历史版本", systemImage: "clock.arrow.circlepath")
             }
+            .glassButton()
             .disabled(model.gitEnvironment == nil || info?.isUnborn == true)
             .help("查看、预览和恢复以前同步过的版本")
 
@@ -240,6 +247,7 @@ struct RepositoryDetailView: View {
             } label: {
                 Label("Finder", systemImage: "folder")
             }
+            .glassButton()
 
             if info?.webURL != nil {
                 Button {
@@ -247,6 +255,7 @@ struct RepositoryDetailView: View {
                 } label: {
                     Label("GitHub", systemImage: "safari")
                 }
+                .glassButton()
             }
 
             Spacer()
@@ -280,6 +289,7 @@ struct RepositoryDetailView: View {
                 Label("更多", systemImage: "ellipsis.circle")
             }
             .fixedSize()
+            .hoverBrighten()
         }
         .controlSize(.regular)
     }
@@ -388,6 +398,7 @@ struct ConflictSummaryView: View {
             Spacer()
             Button("解决冲突…") { model.activeSheet = .conflicts(repo.id) }
                 .buttonStyle(.borderedProminent)
+                .hoverBrighten()
                 .tint(.orange)
         }
         .padding(10)
@@ -440,6 +451,7 @@ struct MissingFolderView: View {
                 if trashed {
                     Button("放回原处") { Task { await model.putBackFromTrash(repo.id) } }
                         .buttonStyle(.borderedProminent)
+                        .hoverBrighten()
                 }
                 if runtime?.downloading == true {
                     ProgressView().controlSize(.small)
@@ -454,6 +466,7 @@ struct MissingFolderView: View {
                         Task { await model.redownload(repo.id) }
                     }
                     .menuStyle(.button)
+                    .hoverBrighten()
                     .fixedSize()
                     Button("重新定位…") { chooseFolder() }
                     Button("从列表移除…") { confirmRemove = true }
@@ -522,10 +535,10 @@ private struct StatTile<Value: View, Detail: View>: View {
             value.font(.headline).lineLimit(1)
             detail.font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .insetBackground(cornerRadius: 10)
+        .glassPanel(cornerRadius: 14)
     }
 }
 
@@ -543,6 +556,7 @@ private struct RecentActivityView: View {
                 Spacer()
                 Button("查看全部日志") { openWindow(id: WindowID.logs) }
                     .buttonStyle(.link)
+                    .hoverHighlight()
             }
             if entries.isEmpty {
                 Text("暂无同步活动").font(.callout).foregroundStyle(.secondary)

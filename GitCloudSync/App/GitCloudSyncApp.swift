@@ -17,6 +17,11 @@ struct GitCloudSyncApp: App {
                 Button("添加仓库…") { RepositoryPicker.present(model: model) }
                     .keyboardShortcut("o")
             }
+            CommandGroup(before: .toolbar) {
+                Button("命令栏…") { NotificationCenter.default.post(name: .toggleCommandBar, object: nil) }
+                    .keyboardShortcut("k")
+                Divider()
+            }
             CommandMenu("同步") {
                 Button("立即同步全部") { model.syncAll(trigger: .manualAll) }
                     .keyboardShortcut("r")
@@ -27,14 +32,6 @@ struct GitCloudSyncApp: App {
                 .keyboardShortcut("p", modifiers: [.command, .shift])
             }
         }
-
-        WindowGroup("版本历史", id: WindowID.history, for: HistoryRequest.self) { $request in
-            if let request {
-                HistoryView(request: request)
-                    .environment(model)
-            }
-        }
-        .defaultSize(width: 1280, height: 780)
 
         Window("同步日志", id: WindowID.logs) {
             LogsView()
@@ -113,18 +110,18 @@ enum MenuBarIcon {
 
 extension Notification.Name {
     static let showMainWindow = Notification.Name("GitSyncShowMainWindow")
+    static let toggleCommandBar = Notification.Name("GitSyncToggleCommandBar")
 }
 
 enum WindowID {
     static let main = "main"
     static let logs = "logs"
-    static let history = "history"
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Keep every window separate even when macOS is set to "prefer tabs: always"; otherwise
-        // version history opens as a tab of the main window and closing it closes both.
+        // the log window opens as a tab of the main window and closing it closes both.
         NSWindow.allowsAutomaticWindowTabbing = false
     }
 
@@ -147,7 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return .terminateLater
     }
 
-    /// Clicking the Dock icon with no window open shows the main window (not a version-history window).
+    /// Clicking the Dock icon with no window open shows the main window (not the log window).
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         guard !flag else { return true }
         NotificationCenter.default.post(name: .showMainWindow, object: nil)

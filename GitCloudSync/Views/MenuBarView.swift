@@ -40,6 +40,7 @@ struct MenuBarView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .hoverBrighten()
             .help("马上同步所有仓库，包括自动同步关闭的")
             .disabled(model.gitEnvironment == nil || total == 0)
 
@@ -91,6 +92,7 @@ struct MenuBarView: View {
                         model.sync(repo.id, trigger: .manualSingle)
                     } label: { Image(systemName: "arrow.triangle.2.circlepath") }
                         .buttonStyle(.borderless)
+                        .hoverHighlight()
                         .disabled(model.runtime[repo.id]?.isSyncing == true)
                         .help("立即同步")
                 }

@@ -122,6 +122,7 @@ struct ConflictResolutionView: View {
                             }
                         }
                         .pickerStyle(.segmented)
+                        .hoverControl()
                         .frame(width: 250)
                     }
                     .padding(.vertical, 2)
@@ -149,6 +150,7 @@ struct ConflictResolutionView: View {
                 Button("取消") { dismiss() }
                 Button("应用并同步") { confirm = true }
                     .buttonStyle(.borderedProminent)
+                    .hoverBrighten()
                     .disabled(files.isEmpty || syncing)
             }
         }

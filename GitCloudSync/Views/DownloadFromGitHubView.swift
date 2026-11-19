@@ -90,10 +90,6 @@ struct DownloadFromGitHubView: View {
                 .help("永久删除 GitHub 上的这个仓库（列表中的仓库请在仓库页的「更多」里删除）")
                 Spacer()
                 Toggle("下载后开启自动同步", isOn: $autoSync)
-                if downloading {
-                    ProgressView().controlSize(.small)
-                    Text("正在下载…").font(.callout).foregroundStyle(.secondary)
-                }
                 Button("完成") { dismiss() }
                     .keyboardShortcut(.cancelAction)
                     .disabled(downloading)
@@ -103,6 +99,16 @@ struct DownloadFromGitHubView: View {
             }
         }
         .padding(20)
+        .overlay {
+            if downloading {
+                ZStack {
+                    Color.black.opacity(0.08)
+                    DotMatrixWaitingCard(message: String(localized: "正在从 GitHub 下载\(selected.map { "「\($0.name)」" } ?? "")…"))
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: downloading)
         .frame(width: 600, height: 580)
         .task { await load() }
         .onChange(of: selection) { downloadError = nil }
@@ -117,7 +123,11 @@ struct DownloadFromGitHubView: View {
     @ViewBuilder
     private var list: some View {
         if loading {
-            ProgressView("正在读取 GitHub 上的仓库…").frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 14) {
+                DotMatrixLoader(columns: 10)
+                Text("正在读取 GitHub 上的仓库…").font(.callout).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let loadError {
             VStack(spacing: 8) {
                 Text(loadError).foregroundStyle(.secondary).multilineTextAlignment(.center)

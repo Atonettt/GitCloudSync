@@ -24,6 +24,7 @@ struct UsageSummaryView: View {
                 }
                 Button("详情") { model.activeSheet = .storage(repoID) }
                     .buttonStyle(.link)
+                    .hoverHighlight()
             } else if runtime?.measuringUsage == true {
                 Text("正在计算…").foregroundStyle(.secondary)
             } else {
@@ -88,6 +89,7 @@ struct StorageView: View {
                     if exists {
                         Button { model.revealInFinder(repoID, relativePath: file.path) } label: { Image(systemName: "folder") }
                             .buttonStyle(.borderless)
+                            .hoverHighlight()
                             .help("在 Finder 中显示")
                     }
                 }

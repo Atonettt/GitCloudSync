@@ -98,6 +98,8 @@ final class AppModel {
     private(set) var nextSyncDate: Date?
     private(set) var isShuttingDown = false
     var activeSheet: AppSheet?
+    /// Version history shown in place of the repository browser in the main window.
+    var historyRequest: HistoryRequest?
     var alert: AppAlert? {
         didSet { if alert == nil { showNextCreation() } }
     }
@@ -876,6 +878,7 @@ final class AppModel {
         // Show it in the main window (the sidebar keeps its selection in this default).
         UserDefaults.standard.set(added.id.uuidString, forKey: "repositoryList.selection")
         if autoSync { setAutoSync(true, for: added.id) }
+        Task { await refreshUsage(added.id, force: true) }
         return nil
     }
 

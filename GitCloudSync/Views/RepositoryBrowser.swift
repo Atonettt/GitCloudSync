@@ -62,13 +62,13 @@ struct RepositoryBrowser: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background { GlassBackdrop() }
+            .modifier(TransparentToolbar())
             .navigationTitle("")
         }
         .searchable(text: $search, placement: .sidebar, prompt: Text("搜索仓库"))
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                SyncAllMenu()
-
                 Button {
                     openWindow(id: WindowID.logs)
                 } label: {
@@ -91,6 +91,7 @@ struct RepositoryBrowser: View {
             Section {
                 ForEach(visible) { repo in
                     RepositoryRow(repo: repo)
+                        .hoverRow()
                         .tag(repo.id)
                         .contextMenu {
                             Button("立即同步") { model.sync(repo.id, trigger: .manualSingle) }
@@ -131,6 +132,7 @@ struct RepositoryBrowser: View {
             Image(systemName: filter == .all ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
         }
         .menuStyle(.borderlessButton)
+        .hoverHighlight()
         .menuIndicator(.hidden)
         .fixedSize()
         .help("排序与筛选")
@@ -218,6 +220,7 @@ private struct RepositoryRow: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
+            .hoverHighlight()
             .help(repo.autoSyncEnabled ? String(localized: "自动同步中，点击暂停") : String(localized: "自动同步已暂停，点击开启"))
         }
         .padding(.vertical, 2)
@@ -240,9 +243,13 @@ private struct SidebarFooter: View {
             if let reorderHint {
                 Text(reorderHint).font(.caption2).foregroundStyle(.secondary)
             }
-            Divider()
-            AuthStatusLabel()
-            IntervalStatusLine()
+            // The account and auto-sync state as one small glass name card.
+            VStack(alignment: .leading, spacing: 8) {
+                AuthStatusLabel()
+                IntervalStatusLine()
+            }
+            .padding(10)
+            .glassPanel(cornerRadius: 14)
             // One full-width control: the main part adds a local folder, the arrow lists the other ways.
             HStack(spacing: 0) {
                 Button {
@@ -253,6 +260,7 @@ private struct SidebarFooter: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
+                .hoverHighlight(cornerRadius: 12, inset: 1)   // stays inside the capsule
                 .help("选择本地文件夹（也可以直接拖进窗口）")
                 Divider().frame(height: 18)
                 Menu {
@@ -279,6 +287,7 @@ private struct SidebarFooter: View {
                     Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
                 }
                 .menuStyle(.borderlessButton)
+                .hoverHighlight(cornerRadius: 12, inset: 1)   // stays inside the capsule
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .frame(width: 34)
@@ -287,7 +296,7 @@ private struct SidebarFooter: View {
             .foregroundStyle(.primary)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
-            .background(Color.primary.opacity(0.07), in: Capsule())
+            .glassPanel(cornerRadius: 17)
             .frame(maxWidth: .infinity)
             .disabled(model.gitEnvironment == nil)
             .help("点击选择本地文件夹（也可以直接拖进窗口）；点箭头可从 GitHub 下载仓库")
@@ -297,40 +306,8 @@ private struct SidebarFooter: View {
     }
 }
 
-/// "Sync All" in the toolbar: click to sync every repository now; its menu holds the sync
-/// interval and turning auto sync off or on for all repositories.
-struct SyncAllMenu: View {
-    @Environment(AppModel.self) private var model
-    @State private var showCustom = false
-
-    var body: some View {
-        Menu {
-            IntervalMenuItems(showCustom: $showCustom)
-            Divider()
-            if model.autoSyncCount > 0 {
-                Button("全部暂停自动同步") { model.setAutoSyncForAll(false) }
-            }
-            if model.autoSyncCount < model.repositories.count {
-                Button("全部开启自动同步") { model.setAutoSyncForAll(true) }
-            }
-        } label: {
-            Label("全部同步", systemImage: "arrow.triangle.2.circlepath")
-                .labelStyle(.titleAndIcon)
-        } primaryAction: {
-            model.syncAll(trigger: .manualAll)
-        }
-        // macOS keeps a toolbar menu's items once built; a new identity rebuilds them with the
-        // current checkmark and pause/resume entries.
-        .id("\(model.settings.intervalMinutes)-\(model.autoSyncCount)")
-        .fixedSize()
-        .disabled(model.repositories.isEmpty || model.gitEnvironment == nil)
-        .help("点击马上同步所有仓库（包括自动同步关闭的）；点箭头设置同步间隔")
-        .popover(isPresented: $showCustom) { CustomIntervalView(isPresented: $showCustom) }
-    }
-}
-
-/// The auto-sync status at the bottom of the sidebar. Display only: the interval is changed from
-/// the Sync All menu in the toolbar.
+/// The auto-sync status at the bottom of the sidebar. Display only: the interval is changed beside
+/// the auto-sync switch (or in Settings), and Sync All lives in the 同步 menu (⌘R) and the menu bar.
 struct IntervalStatusLine: View {
     @Environment(AppModel.self) private var model
 
@@ -346,9 +323,9 @@ struct IntervalStatusLine: View {
                 Text(model.overallStatusText).foregroundStyle(.primary)
                 Group {
                     if running, let next = model.nextSyncDate {
-                        Text("每 \(IntervalMenuItems.label(model.settings.intervalMinutes)) · 下次 \(next.formatted(date: .omitted, time: .shortened))")
+                        Text("每 \(IntervalLabel.text(model.settings.intervalMinutes)) · 下次 \(next.formatted(date: .omitted, time: .shortened))")
                     } else {
-                        Text("每 \(IntervalMenuItems.label(model.settings.intervalMinutes))")
+                        Text("每 \(IntervalLabel.text(model.settings.intervalMinutes))")
                     }
                 }
                 .foregroundStyle(.secondary)
@@ -359,28 +336,41 @@ struct IntervalStatusLine: View {
     }
 }
 
-/// The interval choices in the toolbar's Sync All menu.
-struct IntervalMenuItems: View {
+/// How a sync interval is written in the sidebar.
+enum IntervalLabel {
+    static func text(_ minutes: Int) -> String {
+        minutes == 60 ? String(localized: "60 分钟（1 小时）") : String(localized: "\(minutes) 分钟")
+    }
+}
+
+/// "每 5 分钟 ▾" beside the auto-sync switch: the interval every auto-syncing repository uses.
+struct SyncIntervalMenu: View {
     @Environment(AppModel.self) private var model
-    @Binding var showCustom: Bool
+    @State private var showCustom = false
 
     var body: some View {
         let current = model.settings.intervalMinutes
-        Section("同步间隔") {
-            ForEach(AppSettings.presetIntervals, id: \.self) { minutes in
-                Toggle(Self.label(minutes), isOn: Binding(
-                    get: { model.settings.intervalMinutes == minutes },
-                    set: { _ in model.setInterval(minutes: minutes) }))
+        Menu {
+            Section("同步间隔（所有仓库通用）") {
+                ForEach(AppSettings.presetIntervals, id: \.self) { minutes in
+                    Toggle(IntervalLabel.text(minutes), isOn: Binding(
+                        get: { model.settings.intervalMinutes == minutes },
+                        set: { _ in model.setInterval(minutes: minutes) }))
+                }
+                if !AppSettings.presetIntervals.contains(current) {
+                    Toggle(String(localized: "自定义：\(IntervalLabel.text(current))"), isOn: .constant(true))
+                }
+                Button("自定义…") { showCustom = true }
             }
-            if !AppSettings.presetIntervals.contains(current) {
-                Toggle(String(localized: "自定义：\(Self.label(current))"), isOn: .constant(true))
-            }
-            Button("自定义…") { showCustom = true }
+        } label: {
+            Text("每 \(current) 分钟")
         }
-    }
-
-    static func label(_ minutes: Int) -> String {
-        minutes == 60 ? String(localized: "60 分钟（1 小时）") : String(localized: "\(minutes) 分钟")
+        .menuStyle(.borderlessButton)
+        .hoverHighlight()
+        .fixedSize()
+        .foregroundStyle(.secondary)
+        .help("自动同步的间隔，对所有仓库生效")
+        .popover(isPresented: $showCustom) { CustomIntervalView(isPresented: $showCustom) }
     }
 }
 
@@ -416,4 +406,3 @@ struct CustomIntervalView: View {
         .onAppear { minutes = model.settings.intervalMinutes }
     }
 }
-

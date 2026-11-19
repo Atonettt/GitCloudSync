@@ -109,6 +109,7 @@ struct DeleteRepositoryView: View {
                     .disabled(working)
                 Button(buttonTitle, role: .destructive) { Task { await perform() } }
                     .buttonStyle(.borderedProminent)
+                    .hoverBrighten()
                     .tint(.red)
                     .disabled(working || syncing || checking || (!deleteOnGitHub && !deleteLocal)
                               || (deleteOnGitHub && fullName == nil))

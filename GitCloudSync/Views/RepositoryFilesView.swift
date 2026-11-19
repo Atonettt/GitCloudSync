@@ -29,25 +29,83 @@ struct RepositoryFilesView: View {
     /// Show what changed instead of the file: unsynced edits against the last synced version, or
     /// for a synced file its latest change against the version before.
     @AppStorage("files.compare") private var comparing = false
+    /// Width of the file list, set by dragging the bar between the list and the preview.
+    @AppStorage("files.listWidth") private var listWidth = RepositoryFilesView.defaultListWidth
+    /// How far the bar has moved during the current drag.
+    @State private var dragOffset: CGFloat = 0
+    /// The file list is hidden after being dragged all the way left; drag the bar back out to show it.
+    @AppStorage("files.listCollapsed") private var listCollapsed = false
+    static let defaultListWidth: Double = 260
+    /// Dragging the list narrower than this hides it completely.
+    static let collapseBelow: CGFloat = 110
+    static let minListWidth: CGFloat = 200
+    static let minPreviewWidth: CGFloat = 320
     @State private var baseline: Baseline?
+    /// The version to compare with: nil means automatic (last sync for unsynced edits, otherwise the
+    /// sync point before); otherwise a `FileVersion.id` the user picked.
+    @State private var baseChoice: String?
+    /// Every synced version of the selected file, offered in the "对比对象" menu.
+    @State private var fileVersions: [FileVersion] = []
+    /// Which file `fileVersions` belongs to.
+    @State private var versionsPath: String?
 
     private struct Baseline {
         let path: String
         let modified: Date?
+        let choice: String?
         let url: URL?
         let caption: String
+        /// Set when the chosen version could not be loaded.
+        var error: String?
+    }
+
+    private func comparisonKey(_ item: Item) -> String {
+        // Includes whether Git is ready: right after launch it isn't yet, and the comparison must
+        // run again once it is instead of spinning forever.
+        "\(item.id)|\(item.modified?.timeIntervalSince1970 ?? 0)|\(baseChoice ?? "auto")|\(model.gitEnvironment != nil)"
     }
 
     private var root: URL { URL(fileURLWithPath: repo.path) }
 
     var body: some View {
-        HStack(spacing: 0) {
-            browser
-                .frame(width: 260)
-                .frame(maxHeight: .infinity)
-            Divider()
-            preview
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        GeometryReader { proxy in
+            // The file list may take at most what leaves the preview a usable width.
+            let maxList = max(Self.minListWidth, proxy.size.width - Self.minPreviewWidth - 12)
+            let width = shownListWidth(raw: (listCollapsed ? 0 : listWidth) + dragOffset, max: maxList)
+            HStack(spacing: 0) {
+                if width > 0 {
+                    browser
+                        .frame(width: width)
+                        .frame(maxHeight: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .glassPanel(cornerRadius: 16)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+                PaneResizeHandle(
+                    onDrag: { dragOffset = $0 },
+                    onEnd: { translation in
+                        let raw = (listCollapsed ? 0 : listWidth) + translation
+                        withAnimation(.easeOut(duration: 0.18)) {
+                            if raw < Self.collapseBelow {
+                                listCollapsed = true
+                            } else {
+                                listCollapsed = false
+                                listWidth = min(max(raw, Self.minListWidth), maxList)
+                            }
+                            dragOffset = 0
+                        }
+                    },
+                    onReset: {
+                        withAnimation(.easeOut(duration: 0.18)) {
+                            if listCollapsed { listCollapsed = false } else { listWidth = Self.defaultListWidth }
+                        }
+                    }
+                )
+                preview
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .glassPanel(cornerRadius: 16)
+            }
         }
         // No refresh button: the list follows the folder by itself — files added, removed or renamed
         // here (in Finder or another app), every finished sync, and coming back to the app.
@@ -63,6 +121,7 @@ struct RepositoryFilesView: View {
         }
         // Clicking a folder goes into it, like a sidebar; files are previewed on the right.
         .onChange(of: selection) { _, id in
+            baseChoice = nil
             if let item = item(id), item.isDirectory { folder = item.path }
         }
         .onChange(of: model.runtime[repo.id]?.isSyncing) { _, syncing in
@@ -82,6 +141,7 @@ struct RepositoryFilesView: View {
                         Image(systemName: "chevron.left")
                     }
                     .buttonStyle(.borderless)
+                    .hoverHighlight()
                     .help("返回上一级")
                 }
                 ScrollView(.horizontal, showsIndicators: false) { breadcrumb }
@@ -90,8 +150,10 @@ struct RepositoryFilesView: View {
             .padding(.vertical, 8)
             Divider()
             List(items, selection: $selection) { item in
-                row(item).tag(item.id)
+                row(item).hoverRow().tag(item.id)
             }
+            .scrollContentBackground(.hidden)
+            .progressiveBlurEdges(top: 10, bottom: 18)
             .contextMenu(forSelectionType: Item.ID.self) { ids in
                 if let item = item(ids.first) {
                     Button(item.isDirectory ? String(localized: "打开文件夹") : String(localized: "打开")) { open(item) }
@@ -131,11 +193,13 @@ struct RepositoryFilesView: View {
         return HStack(spacing: 2) {
             Button(repo.displayName) { folder = "" }
                 .buttonStyle(.borderless)
+                .hoverHighlight()
                 .fontWeight(parts.isEmpty ? .semibold : .regular)
             ForEach(Array(parts.enumerated()), id: \.offset) { index, part in
                 Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
                 Button(part) { folder = parts[...index].joined(separator: "/") }
                     .buttonStyle(.borderless)
+                    .hoverHighlight()
                     .fontWeight(index == parts.count - 1 ? .semibold : .regular)
             }
         }
@@ -208,40 +272,79 @@ struct RepositoryFilesView: View {
                     let count = (try? FileManager.default.contentsOfDirectory(
                         at: url(item), includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
                     ).count) ?? 0
-                    ContentUnavailableView {
-                        Label(item.name, systemImage: "folder")
-                    } description: {
-                        Text("里面有 \(count) 项")
-                    } actions: {
+                    VStack(spacing: 16) {
+                        GlassFolderView(directory: url(item), title: item.name, count: count)
+                            .frame(height: 260)
                         Button("打开文件夹") { open(item) }
-                            .buttonStyle(.borderedProminent)
+                            .glassButton(prominent: true)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if comparing {
-                    if let baseline, baseline.path == item.path, baseline.modified == item.modified {
-                        VersionComparisonView(old: baseline.url, new: url(item),
-                                              kind: (item.name as NSString).pathExtension,
-                                              caption: baseline.caption)
-                            .id("\(item.id)|\(item.modified?.timeIntervalSince1970 ?? 0)")
+                    if let baseline, baseline.path == item.path, baseline.modified == item.modified,
+                       baseline.choice == baseChoice {
+                        if let error = baseline.error {
+                            ContentUnavailableView {
+                                Label("无法对比", systemImage: "exclamationmark.triangle")
+                            } description: {
+                                Text(error)
+                            } actions: {
+                                Button("重试") { self.baseline = nil }
+                            }
+                        } else {
+                            VersionComparisonView(old: baseline.url, new: url(item),
+                                                  kind: (item.name as NSString).pathExtension,
+                                                  caption: baseline.caption)
+                                .id(comparisonKey(item))
+                        }
                     } else {
                         ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .task(id: "\(item.id)|\(item.modified?.timeIntervalSince1970 ?? 0)") { await loadBaseline(item) }
+                            .task(id: comparisonKey(item)) { await loadBaseline(item) }
                     }
                 } else {
                     QuickLookView(url: url(item), revision: item.modified).id(item.id)
+                        .progressiveBlurEdges(top: 12, bottom: 22)
                 }
             }
             .frame(maxHeight: .infinity, alignment: .top)
         } else {
-            ContentUnavailableView {
-                Label(folder.isEmpty ? repo.displayName : (folder as NSString).lastPathComponent, systemImage: "folder")
-            } description: {
-                Text(items.isEmpty ? String(localized: "这个文件夹是空的") : String(localized: "里面有 \(items.count) 项，点左边的文件即可预览。"))
+            VStack(spacing: 10) {
+                GlassFolderView(directory: folder.isEmpty ? root : root.appendingPathComponent(folder),
+                                title: folder.isEmpty ? repo.displayName : (folder as NSString).lastPathComponent,
+                                count: items.count)
+                    .frame(height: 260)
+                    .id(folder)
+                Text(items.isEmpty ? String(localized: "这个文件夹是空的") : String(localized: "点左边的文件即可预览"))
+                    .font(.callout).foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
+    /// While dragging: below the collapse point the list disappears, otherwise it snaps to its limits.
+    private func shownListWidth(raw: CGFloat, max maxList: CGFloat) -> CGFloat {
+        if raw < Self.collapseBelow { return 0 }
+        return min(Swift.max(raw, Self.minListWidth), maxList)
+    }
+
+    /// One row when the pane is wide; when narrow, the "预览 / 对比改动" switch moves under the name
+    /// so the file name isn't squeezed down to a few letters.
     private func previewHeader(_ item: Item) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                previewTitle(item).frame(minWidth: 200, alignment: .leading)
+                Spacer(minLength: 0)
+                if !item.isDirectory { headerControls(item) }
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                previewTitle(item)
+                if !item.isDirectory { headerControls(item) }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    private func previewTitle(_ item: Item) -> some View {
         HStack(spacing: 12) {
             Image(nsImage: FileIcons.icon(for: url(item), isDirectory: item.isDirectory))
                 .resizable()
@@ -250,30 +353,99 @@ struct RepositoryFilesView: View {
                 Text(item.name).font(.headline).lineLimit(1).truncationMode(.middle)
                 Text(details(item)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
-            Spacer(minLength: 0)
-            if !item.isDirectory {
-                Picker("显示", selection: $comparing) {
-                    Text("预览").tag(false)
-                    Text("对比改动").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-                .help(isPending(item)
-                      ? String(localized: "对比改动：标出你还没同步的修改")
-                      : String(localized: "对比改动：标出这个文件和上一个时间节点相比改了哪些地方"))
-            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 
-    /// What the file is compared with. Unsynced: the version at the last sync (what GitHub has).
-    /// Synced: the version before its latest change.
+    private func modePicker(_ item: Item) -> some View {
+        Picker("显示", selection: $comparing) {
+            Text("预览").tag(false)
+            Text("对比改动").tag(true)
+        }
+        .pickerStyle(.segmented)
+        .hoverControl()
+        .labelsHidden()
+        .fixedSize()
+        .help(isPending(item)
+              ? String(localized: "对比改动：标出你还没同步的修改")
+              : String(localized: "对比改动：标出这个文件和上一个时间节点相比改了哪些地方"))
+    }
+
+    /// "对比对象 [自动 ▾]": compare the file on disk with any synced version of it.
+    /// "预览 / 对比改动", and while comparing, the version to compare with right beside it.
+    private func headerControls(_ item: Item) -> some View {
+        HStack(spacing: 8) {
+            modePicker(item)
+            if comparing { basePicker(item) }
+        }
+    }
+
+    private func basePicker(_ item: Item) -> some View {
+        Picker("对比对象", selection: $baseChoice) {
+            Text(isPending(item) ? String(localized: "上次同步的版本") : String(localized: "上一个时间节点"))
+                .tag(String?.none)
+            if !fileVersions.isEmpty {
+                Divider()
+                ForEach(fileVersions) { version in
+                    Text(versionTitle(version)).tag(String?.some(version.id))
+                }
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .hoverControl()
+        // A menu picker is as wide as its longest item; long version titles would push the whole
+        // window wider than it is. Cap it so the title truncates instead.
+        // A fixed width: a menu picker is as wide as its title, and a width that changes with the title
+        // would make the header switch between one and two rows (and long titles widen the window).
+        .frame(width: 220, alignment: .leading)
+        .help("对比对象：选择要和现在的文件对比的时间节点")
+        .task(id: "\(item.path)|\(model.gitEnvironment != nil)") { await loadVersions(item) }
+    }
+
+    private func versionTitle(_ version: FileVersion) -> String {
+        var parts = [HistoryFormat.relative(version.commit.date), version.commit.source]
+        if version.id == fileVersions.first?.id { parts.append(String(localized: "最新同步版本")) }
+        if version.path != item(selection)?.path {
+            parts.append(String(localized: "当时名为「\(HistoryFormat.fileName(version.path))」"))
+        }
+        return parts.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    private func loadVersions(_ item: Item) async {
+        // Another file's versions would offer the wrong choices; the same file's stay until the new list
+        // arrives, so the menu never goes blank while reloading.
+        if versionsPath != item.path { fileVersions = [] }
+        guard let browser = model.historyBrowser(repo.id) else { return }
+        let loaded = ((try? await browser.versions(of: item.path)) ?? []).filter { !$0.isDeletion }
+        guard !Task.isCancelled else { return }
+        fileVersions = loaded
+        versionsPath = item.path
+        if let choice = baseChoice, !loaded.contains(where: { $0.id == choice }) { baseChoice = nil }
+    }
+
+    /// What the file is compared with. A picked version if there is one; otherwise, unsynced: the
+    /// version at the last sync (what GitHub has); synced: the version before its latest change.
     private func loadBaseline(_ item: Item) async {
         guard let browser = model.historyBrowser(repo.id) else { return }
-        func done(_ url: URL?, _ caption: String) {
-            baseline = Baseline(path: item.path, modified: item.modified, url: url, caption: caption)
+        let choice = baseChoice
+        func done(_ url: URL?, _ caption: String, error: String? = nil) {
+            guard !Task.isCancelled else { return }
+            baseline = Baseline(path: item.path, modified: item.modified, choice: choice, url: url,
+                                caption: caption, error: error)
+        }
+        if let choice {
+            guard let version = fileVersions.first(where: { $0.id == choice }) else {
+                baseChoice = nil
+                return
+            }
+            do {
+                let file = try await browser.exportForPreview(path: version.path, commit: version.commit.id,
+                                                              date: version.commit.date)
+                done(file, String(localized: "现在的文件与 \(HistoryFormat.relative(version.commit.date)) 的版本相比"))
+            } catch {
+                done(nil, "", error: HistoryFormat.describe(error))
+            }
+            return
         }
         if isPending(item) {
             if let file = try? await browser.exportForPreview(path: item.path, commit: "HEAD", date: Date()) {
@@ -333,8 +505,7 @@ struct RepositoryFilesView: View {
     }
 
     private func showHistory(_ item: Item) {
-        NSApp.activate(ignoringOtherApps: true)
-        openWindow(id: WindowID.history, value: HistoryRequest(repoID: repo.id, path: item.path))
+        model.historyRequest = HistoryRequest(repoID: repo.id, path: item.path)
     }
 
     private func reload() async {
@@ -433,4 +604,48 @@ enum FolderChanges {
 /// Only touched on the main queue, where the folder events and the delayed reload both run.
 private final class PendingFlag: @unchecked Sendable {
     var value = false
+}
+
+/// The bar between two panes: drag sideways to resize (all the way left hides the list), double-click
+/// to bring it back or return to the default width.
+/// It sits in the gap between the panels and shows a small grip, brighter while hovered or dragged.
+struct PaneResizeHandle: View {
+    let onDrag: (CGFloat) -> Void
+    let onEnd: (CGFloat) -> Void
+    let onReset: () -> Void
+
+    @State private var hovering = false
+    @State private var dragging = false
+
+    var body: some View {
+        ZStack {
+            Color.clear
+            Capsule()
+                .fill(Color.primary.opacity(dragging ? 0.45 : hovering ? 0.30 : 0.14))
+                .frame(width: 4, height: 44)
+        }
+        .frame(width: 12)
+        .frame(maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .onHover { inside in
+            hovering = inside
+            if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+        }
+        .gesture(
+            DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                .onChanged { value in
+                    dragging = true
+                    onDrag(value.translation.width)
+                }
+                .onEnded { value in
+                    dragging = false
+                    onEnd(value.translation.width)
+                }
+        )
+        .onTapGesture(count: 2) { onReset() }
+        .animation(.easeOut(duration: 0.12), value: hovering)
+        .animation(.easeOut(duration: 0.12), value: dragging)
+        .help("拖动调整宽度，拉到最左可隐藏文件列表；双击恢复")
+        .accessibilityLabel(Text("调整文件列表宽度"))
+    }
 }
